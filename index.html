@@ -282,7 +282,8 @@
         const headerMapping = {
             'First Name': 'firstName', 'Last Name': 'lastName', 'Email': 'email', 'Phone': 'phone',
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
-            'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR'
+            'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
+            'Notes': 'notes'
         };
         const expectedHeaders = Object.keys(headerMapping);
 
@@ -306,7 +307,7 @@
             const rawHeaders = parseCSVLine(lines[0]); const data = [];
             const actualHeaders = rawHeaders.map(h => h.trim());
             if (expectedHeaders.filter(eh => !actualHeaders.includes(eh)).length > 0) {
-                 console.warn('CSV headers missing/mismatched.');
+                 console.warn('CSV headers missing/mismatched. Expected:', expectedHeaders, 'Actual:', actualHeaders);
             }
             for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim() === '') continue; 
@@ -390,7 +391,6 @@
                     cellCompany.textContent = attendee.company || 'N/A';
                     cellTitle.textContent = attendee.jobTitle || 'N/A';
 
-                    // Apply classes for padding and text wrapping
                     Array.from(row.cells).forEach(cell => {
                         cell.className = 'px-6 py-4 text-sm text-gray-700 break-words';
                     });
@@ -429,6 +429,7 @@
             createDetailRow('Full Name', fullName); createDetailRow('Email', attendee.email, 'email'); createDetailRow('Phone', attendee.phone, 'tel');
             createDetailRow('Company', attendee.company); createDetailRow('Job Title', attendee.jobTitle); createDetailRow('Type', attendee.type);
             createDetailRow('Focus Account', attendee.focusAccount); createDetailRow('On-ground AE', attendee.onGroundAE); createDetailRow('On-ground SDR', attendee.onGroundSDR);
+            createDetailRow('Notes', attendee.notes);
             attendeeModal.classList.remove('hidden');
         }
         function closeAttendeeDetailModal() { attendeeModal.classList.add('hidden'); }
@@ -476,12 +477,16 @@
 
         function applyFiltersAndSearch() {
             let filtered = [...allAttendees]; 
+            
+            // Apply UI filters (Type, Focus Account, AE, SDR)
             filtered = filtered.filter(att => 
                 (currentFilters.type === 'All' || (att.type && att.type.toLowerCase() === currentFilters.type.toLowerCase())) &&
                 (currentFilters.focusAccount === 'All' || (att.focusAccount && att.focusAccount.toLowerCase() === currentFilters.focusAccount.toLowerCase())) &&
                 (currentFilters.onGroundAE === 'All' || (att.onGroundAE && att.onGroundAE === currentFilters.onGroundAE)) && 
                 (currentFilters.onGroundSDR === 'All' || (att.onGroundSDR && att.onGroundSDR === currentFilters.onGroundSDR))   
             );
+
+            // Apply search term
             if (currentSearchTerm) {
                 const searchTermLower = currentSearchTerm.toLowerCase();
                 filtered = filtered.filter(att =>
@@ -490,6 +495,16 @@
                     ((att.jobTitle || '').toLowerCase().includes(searchTermLower))
                 );
             }
+
+            // Sort alphabetically by Full Name
+            filtered.sort((a, b) => {
+                const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+                const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+            });
+            
             if (!loadingSpinner.classList.contains('hidden') || !errorMessage.classList.contains('hidden')) {} 
             else { attendeesTableContainer.classList.remove('hidden'); renderTable(filtered); }
         }
