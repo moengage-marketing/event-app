@@ -71,18 +71,24 @@
         .side-by-side-charts .chart-container {
              max-width: 100%; /* Allow them to fill their flex item */
         }
-        #transcriptArea {
-            min-height: 100px;
-            border: 1px solid #e5e7eb; /* gray-200 */
-            padding: 8px;
-            border-radius: 0.375rem; /* rounded-md */
-            background-color: #f9fafb; /* gray-50 */
-        }
-
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4 md:p-8">
+
+    <div id="welcomeScreen" class="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center p-8">
+        <p class="text-3xl md:text-4xl font-bold text-gray-700 mb-4">Welcome to</p>
+        <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png" 
+             alt="Event Banner" 
+             class="max-w-xs md:max-w-md h-auto mx-auto rounded-lg mb-8" 
+             onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
+        <div class="w-full max-w-sm">
+            <label for="userNameInput" class="block text-sm font-medium text-gray-700 mb-1">Please enter your first name:</label>
+            <input type="text" id="userNameInput" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4" placeholder="Your First Name">
+            <button id="enterAppButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">Enter</button>
+        </div>
+    </div>
+
+    <div id="mainAppContent" class="container mx-auto p-4 md:p-8 hidden">
         <header class="mb-6 text-center">
             <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png" 
                  alt="Event Banner" 
@@ -157,7 +163,6 @@
                 </div>
                 <div id="modalBody" class="p-6 space-y-3"></div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                     <button id="captureContextButton" class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Capture On-ground Context</button>
                      <button id="closeAttendeeModalFooterButton" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Close</button>
                 </div>
             </div>
@@ -238,42 +243,23 @@
                 </div>
             </div>
         </div>
-
-        <div id="voiceContextModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 modal-backdrop hidden">
-            <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-800">Capture On-ground Context</h3>
-                    <button id="closeVoiceContextModalButton" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="p-6 space-y-4">
-                    <p id="voiceStatusMessage" class="text-sm text-gray-600">Click "Start Recording" to begin.</p>
-                    <div id="transcriptArea" class="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 min-h-[100px]">
-                        </div>
-                    <div class="flex space-x-2 mt-2">
-                        <button id="startRecordingButton" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Start Recording</button>
-                        <button id="stopRecordingButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hidden">Stop Recording</button>
-                        <button id="restartRecordingButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg hidden">Restart</button>
-                    </div>
-                </div>
-                <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                     <button id="submitContextButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50" disabled>Submit Context</button>
-                     <button id="closeVoiceContextModalFooterButton" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-
     </div>
 
-    <script>
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv';
         const POLLING_INTERVAL = 30000; 
-        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybv6xiBVCdEwhMrxyzl8ghP2ljWZseIo2u_uhXbum8fJX4Yih71bP1PwcrbPu-EUSB/exec';
 
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const mainAppContent = document.getElementById('mainAppContent');
+        const userNameInput = document.getElementById('userNameInput');
+        const enterAppButton = document.getElementById('enterAppButton');
 
         const searchInput = document.getElementById('searchInput');
         const filterButton = document.getElementById('filterButton');
@@ -285,7 +271,7 @@
         const modalBody = document.getElementById('modalBody');
         const closeAttendeeModalButton = document.getElementById('closeAttendeeModalButton');
         const closeAttendeeModalFooterButton = document.getElementById('closeAttendeeModalFooterButton');
-        const captureContextButton = document.getElementById('captureContextButton');
+        // Removed captureContextButton and related voice modal elements
 
         const filterModal = document.getElementById('filterModal');
         const closeFilterModalButton = document.getElementById('closeFilterModalButton');
@@ -304,17 +290,6 @@
         const aeChartCanvas = document.getElementById('aeChart');
         const attendeeTypeChartCanvas = document.getElementById('attendeeTypeChart');
 
-        const voiceContextModal = document.getElementById('voiceContextModal');
-        const closeVoiceContextModalButton = document.getElementById('closeVoiceContextModalButton');
-        const closeVoiceContextModalFooterButton = document.getElementById('closeVoiceContextModalFooterButton');
-        const voiceStatusMessage = document.getElementById('voiceStatusMessage');
-        const transcriptArea = document.getElementById('transcriptArea');
-        const startRecordingButton = document.getElementById('startRecordingButton');
-        const stopRecordingButton = document.getElementById('stopRecordingButton');
-        const restartRecordingButton = document.getElementById('restartRecordingButton');
-        const submitContextButton = document.getElementById('submitContextButton');
-
-
         const loadingSpinner = document.getElementById('loadingSpinner');
         const errorMessage = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
@@ -324,21 +299,25 @@
         let allAttendees = [];
         let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All' };
         let currentSearchTerm = '';
-        let currentAttendeeForContext = null; 
 
         let sdrChartInstance = null;
         let aeChartInstance = null;
         let attendeeTypeChartInstance = null;
 
-        let recognition = null;
-        let finalTranscript = '';
-        let isRecording = false;
+        // Firebase variables
+        let db;
+        let auth;
+        let currentUserId;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-attendee-app'; // Use __app_id or a default
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        setLogLevel('debug'); // For Firebase logging
 
         const headerMapping = {
             'First Name': 'firstName', 'Last Name': 'lastName', 'Email': 'email', 'Phone': 'phone',
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
             'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
-            'Notes': 'notes', 'On-ground Context': 'onGroundContext'
+            'Notes': 'notes' // Removed 'On-ground Context'
         };
         const expectedHeaders = Object.keys(headerMapping);
 
@@ -362,9 +341,9 @@
             const rawHeaders = parseCSVLine(lines[0]); const data = [];
             const actualHeaders = rawHeaders.map(h => h.trim());
             
-            const missingHeaders = expectedHeaders.filter(eh => !actualHeaders.includes(eh) && eh !== 'On-ground Context'); 
+            const missingHeaders = expectedHeaders.filter(eh => !actualHeaders.includes(eh)); 
             if (missingHeaders.length > 0) {
-                 console.warn('CSV headers missing/mismatched. Expected (excluding On-ground Context if new):', missingHeaders, 'Actual:', actualHeaders);
+                 console.warn('CSV headers missing/mismatched. Expected:', missingHeaders, 'Actual:', actualHeaders);
             }
 
             for (let i = 1; i < lines.length; i++) {
@@ -417,7 +396,7 @@
                 console.error('Error fetching attendees:', error);
                 let userFriendlyMessage = `Failed to load attendee data: ${error.message}.`;
                 if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
-                    userFriendlyMessage += ' This often indicates a network issue or that the Google Sheet URL is inaccessible. Please check your internet connection and ensure the Google Sheet is correctly published and publicly accessible via its CSV link.';
+                    userFriendlyMessage = 'Failed to fetch attendee data. This could be a network issue, or the Google Sheet URL might be temporarily inaccessible or blocked. Please check your internet connection and ensure the Google Sheet is correctly published and publicly accessible via its CSV link. Try refreshing the page.';
                 }
                 showError(userFriendlyMessage);
             } finally { 
@@ -478,7 +457,6 @@
         }
 
         function openAttendeeDetailModal(attendee) {
-            currentAttendeeForContext = attendee; 
             modalBody.innerHTML = ''; 
             const fullName = `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim();
             const createDetailRow = (label, value, type = 'text') => {
@@ -500,10 +478,9 @@
             createDetailRow('Company', attendee.company); createDetailRow('Job Title', attendee.jobTitle); createDetailRow('Type', attendee.type);
             createDetailRow('Focus Account', attendee.focusAccount); createDetailRow('On-ground AE', attendee.onGroundAE); createDetailRow('On-ground SDR', attendee.onGroundSDR);
             createDetailRow('Notes', attendee.notes);
-            createDetailRow('On-ground Context', attendee.onGroundContext); 
             attendeeModal.classList.remove('hidden');
         }
-        function closeAttendeeDetailModal() { attendeeModal.classList.add('hidden'); currentAttendeeForContext = null; }
+        function closeAttendeeDetailModal() { attendeeModal.classList.add('hidden');}
         
         function openFilterModal() {
             filterType.value = currentFilters.type; filterFocusAccount.value = currentFilters.focusAccount;
@@ -571,222 +548,107 @@
             else { attendeesTableContainer.classList.remove('hidden'); renderTable(filtered); }
         }
 
-        function initializeSpeechRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                voiceStatusMessage.textContent = 'Speech recognition is not supported in this browser. Please use Chrome or Edge.';
-                startRecordingButton.disabled = true;
+        async function saveUserName(name) {
+            if (!db || !currentUserId) {
+                console.error("Firestore not initialized or user ID not available for saving name.");
+                return;
+            }
+            const userDocRef = doc(db, "artifacts", appId, "users", currentUserId, "userData", "profile");
+            try {
+                await setDoc(userDocRef, { firstName: name }, { merge: true });
+                console.log("User name saved to Firestore.");
+            } catch (error) {
+                console.error("Error saving user name to Firestore:", error);
+            }
+        }
+
+        async function getUserName() {
+            if (!db || !currentUserId) {
+                console.error("Firestore not initialized or user ID not available for getting name.");
                 return null;
             }
-            const rec = new SpeechRecognition();
-            rec.continuous = true;
-            rec.interimResults = true;
-            rec.lang = 'en-US';
-
-            rec.onstart = () => {
-                isRecording = true;
-                voiceStatusMessage.textContent = 'Recording... Speak now.';
-                startRecordingButton.classList.add('hidden');
-                stopRecordingButton.classList.remove('hidden');
-                restartRecordingButton.classList.remove('hidden');
-                submitContextButton.disabled = true;
-            };
-
-            rec.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-                transcriptArea.textContent = finalTranscript + interimTranscript;
-            };
-
-            rec.onerror = (event) => {
-                console.error('Speech recognition error:', event.error, event.message);
-                let userMessage = `Error: ${event.error}.`;
-                if (event.error === 'not-allowed') {
-                    userMessage = 'Microphone permission denied. Please check your browser\'s site settings to allow microphone access for this page, then refresh and try again.';
-                } else if (event.error === 'no-speech') {
-                     userMessage = 'No speech detected. Please ensure your microphone is working and try speaking clearly.';
-                } else if (event.error === 'audio-capture') {
-                    userMessage = 'Audio capture failed. Please ensure your microphone is properly connected and not in use by another application.';
-                } else if (event.error === 'network') {
-                    userMessage = 'Network error during speech recognition. Please check your internet connection.';
-                } else {
-                    userMessage = `Speech recognition error: ${event.error}. Please try again.`;
-                }
-                voiceStatusMessage.textContent = userMessage;
-                isRecording = false;
-                startRecordingButton.classList.remove('hidden');
-                stopRecordingButton.classList.add('hidden');
-                restartRecordingButton.classList.add('hidden');
-                submitContextButton.disabled = true;
-            };
-
-            rec.onend = () => {
-                isRecording = false;
-                if (finalTranscript.trim() !== '') { 
-                    submitContextButton.disabled = false;
-                }
-                 if(!stopRecordingButton.classList.contains('hidden')) { 
-                    voiceStatusMessage.textContent = 'Recording stopped. Click Submit or Restart.';
-                 } else if (startRecordingButton.classList.contains('hidden')) { 
-                    voiceStatusMessage.textContent = 'Recording ended. Click Submit or Restart.';
-                 }
-            };
-            return rec;
-        }
-        
-        function startVoiceCapture() {
-            if (!currentAttendeeForContext) return;
-            finalTranscript = '';
-            transcriptArea.textContent = '';
-            voiceStatusMessage.textContent = 'Initializing... Please allow microphone access if prompted.';
-            submitContextButton.disabled = true;
-            
-            if (!recognition) { 
-                recognition = initializeSpeechRecognition();
-            }
-
-            if (recognition) { 
-                try {
-                    if (!isRecording) {
-                        recognition.start();
-                    } else {
-                        console.log("Recognition already started.");
-                    }
-                } catch(e) {
-                    console.error("Error starting recognition:", e);
-                    voiceStatusMessage.textContent = "Could not start recording. Check permissions and try again.";
-                    isRecording = false;
-                    startRecordingButton.classList.remove('hidden');
-                    stopRecordingButton.classList.add('hidden');
-                    restartRecordingButton.classList.add('hidden');
-                }
-            } else {
-                voiceStatusMessage.textContent = 'Speech recognition is not available on this browser.';
-                startRecordingButton.disabled = true;
-            }
-        }
-
-        function stopVoiceCapture() {
-            if (recognition && isRecording) {
-                recognition.stop();
-                isRecording = false; 
-                voiceStatusMessage.textContent = 'Recording stopped. Ready to submit or restart.';
-                stopRecordingButton.classList.add('hidden');
-                startRecordingButton.classList.remove('hidden'); 
-            }
-        }
-        
-        function restartVoiceCapture() {
-            if (recognition && isRecording) {
-                recognition.stop(); 
-            }
-            finalTranscript = '';
-            transcriptArea.textContent = '';
-            voiceStatusMessage.textContent = 'Restarting...';
-            submitContextButton.disabled = true;
-            setTimeout(() => {
-                 startVoiceCapture();
-            }, 100);
-        }
-
-        async function submitContextToSheet() {
-            if (!currentAttendeeForContext || !currentAttendeeForContext.email) {
-                alert('Error: Attendee details not found.');
-                return;
-            }
-            if (finalTranscript.trim() === '') {
-                alert('No context recorded to submit.');
-                return;
-            }
-            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
-                alert('Developer: Google Apps Script URL not configured. Please update the GOOGLE_APPS_SCRIPT_URL constant in the script.');
-                voiceStatusMessage.textContent = 'Submission endpoint not configured.';
-                return;
-            }
-
-            voiceStatusMessage.textContent = 'Submitting...';
-            submitContextButton.disabled = true;
-
+            const userDocRef = doc(db, "artifacts", appId, "users", currentUserId, "userData", "profile");
             try {
-                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'cors', 
-                    cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: currentAttendeeForContext.email,
-                        context: finalTranscript.trim()
-                    }),
-                });
-
-                if (!response.ok) {
-                    const errorBody = await response.text();
-                    console.error('Submission to Apps Script failed with status:', response.status, response.statusText, 'Response body:', errorBody);
-                    throw new Error(`Server responded with ${response.status}: ${response.statusText}. Check console for Apps Script response.`);
-                }
-                
-                const result = await response.json();
-                if (result.status === 'success') {
-                    voiceStatusMessage.textContent = 'Your context will be transcribed in a couple of hours.'; 
-                    setTimeout(() => {
-                        closeVoiceContextModal();
-                        fetchAttendees(); 
-                    }, 2000);
+                const docSnap = await getDoc(userDocRef);
+                if (docSnap.exists()) {
+                    console.log("User name retrieved from Firestore:", docSnap.data().firstName);
+                    return docSnap.data().firstName;
                 } else {
-                    console.error('Apps Script reported an error:', result.message);
-                    throw new Error(result.message || 'Failed to submit context. Server indicated an error.');
+                    console.log("No user name found in Firestore.");
+                    return null;
                 }
             } catch (error) {
-                console.error('Error submitting context to Apps Script:', error);
-                let userFriendlyError = `Submission failed: ${error.message}.`;
-                 if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
-                    userFriendlyError += ' This could be a network issue, CORS problem, or an issue with the Apps Script URL/deployment (e.g., not deployed correctly, wrong URL, or script error).';
-                }
-                userFriendlyError += ' Please check the browser console for more technical details and ensure the Apps Script is deployed correctly with "Anyone" access.';
-                voiceStatusMessage.textContent = userFriendlyError;
-                submitContextButton.disabled = false; 
+                console.error("Error getting user name from Firestore:", error);
+                return null;
             }
         }
 
-
-        function openVoiceContextModal() {
-            if (!currentAttendeeForContext) {
-                alert("Please select an attendee first by clicking on their row.");
+        async function initializeAppLogic() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is not available. App cannot initialize fully.");
+                // Fallback or show error to user if Firebase is critical
+                welcomeScreen.classList.remove('hidden'); // Show welcome to at least get name
+                mainAppContent.classList.add('hidden');
                 return;
             }
-            voiceStatusMessage.textContent = 'Click "Start Recording" to begin. Allow microphone access if prompted.';
-            transcriptArea.textContent = '';
-            finalTranscript = '';
-            startRecordingButton.classList.remove('hidden');
-            stopRecordingButton.classList.add('hidden');
-            restartRecordingButton.classList.add('hidden');
-            submitContextButton.disabled = true;
-            voiceContextModal.classList.remove('hidden');
-        }
-        function closeVoiceContextModal() {
-            if (recognition && isRecording) {
-                recognition.stop();
-            }
-            voiceContextModal.classList.add('hidden');
-        }
 
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                    console.log("Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+                currentUserId = auth.currentUser?.uid || crypto.randomUUID(); // Use UID or fallback to UUID
+                console.log("Current User ID:", currentUserId);
+
+
+                const storedName = await getUserName();
+                if (storedName) {
+                    welcomeScreen.classList.add('hidden');
+                    mainAppContent.classList.remove('hidden');
+                    fetchAttendees(); 
+                    setInterval(fetchAttendees, POLLING_INTERVAL);
+                } else {
+                    welcomeScreen.classList.remove('hidden');
+                    mainAppContent.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error during Firebase initialization or auth:", error);
+                // Fallback for critical Firebase errors
+                welcomeScreen.classList.remove('hidden');
+                mainAppContent.classList.add('hidden');
+                // Optionally, display an error message to the user on the welcome screen
+                userNameInput.placeholder = "Error initializing. Try refreshing.";
+                enterAppButton.disabled = true;
+            }
+        }
         
         document.addEventListener('DOMContentLoaded', () => {
-            fetchAttendees(); setInterval(fetchAttendees, POLLING_INTERVAL); 
+            initializeAppLogic();
+
+            enterAppButton.addEventListener('click', async () => {
+                const name = userNameInput.value.trim();
+                if (name) {
+                    await saveUserName(name);
+                    welcomeScreen.classList.add('hidden');
+                    mainAppContent.classList.remove('hidden');
+                    fetchAttendees(); // Initial fetch after name entry
+                    setInterval(fetchAttendees, POLLING_INTERVAL);
+                } else {
+                    alert("Please enter your first name.");
+                }
+            });
+            
             searchInput.addEventListener('input', (e) => { currentSearchTerm = e.target.value; applyFiltersAndSearch(); });
             filterButton.addEventListener('click', openFilterModal);
             metricsButton.addEventListener('click', openMetricsModal);
-            captureContextButton.addEventListener('click', openVoiceContextModal);
-
-
+            
             closeAttendeeModalButton.addEventListener('click', closeAttendeeDetailModal);
             closeAttendeeModalFooterButton.addEventListener('click', closeAttendeeDetailModal);
             attendeeModal.addEventListener('click', (e) => { if (e.target === attendeeModal) closeAttendeeDetailModal(); });
@@ -797,16 +659,6 @@
             closeMetricsModalButton.addEventListener('click', closeMetricsModal);
             closeMetricsModalFooterButton.addEventListener('click', closeMetricsModal);
             metricsModal.addEventListener('click', (e) => { if (e.target === metricsModal) closeMetricsModal(); });
-
-            closeVoiceContextModalButton.addEventListener('click', closeVoiceContextModal);
-            closeVoiceContextModalFooterButton.addEventListener('click', closeVoiceContextModal);
-            voiceContextModal.addEventListener('click', (e) => { if (e.target === voiceContextModal) closeVoiceContextModal(); });
-
-            startRecordingButton.addEventListener('click', startVoiceCapture);
-            stopRecordingButton.addEventListener('click', stopVoiceCapture);
-            restartRecordingButton.addEventListener('click', restartVoiceCapture);
-            submitContextButton.addEventListener('click', submitContextToSheet);
-
 
             applyFiltersButton.addEventListener('click', () => {
                 currentFilters.type = filterType.value; currentFilters.focusAccount = filterFocusAccount.value;
@@ -824,3 +676,4 @@
     </script>
 </body>
 </html>
+
