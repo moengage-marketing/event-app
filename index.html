@@ -744,8 +744,10 @@
 
         async function toggleDemoRequest(attendee) {
             if (!db || !currentUserId || !attendee || !attendee.email) {
-                console.error("Firestore not ready or attendee email missing for demo request.");
-                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console.");
+                console.error("toggleDemoRequest PRE-CONDITION FAILED:", 
+                    {dbReady: !!db, currentUserId: currentUserId, attendeePresent: !!attendee, attendeeEmail: attendee?.email}
+                );
+                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details.");
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
@@ -764,13 +766,11 @@
                     await deleteDoc(demoStatusRef); 
                 }
                 
-                // Update the attendee object in the allAttendees array directly
                 const attendeeInGlobalArray = allAttendees.find(a => a.email === attendee.email);
                 if (attendeeInGlobalArray) {
                     attendeeInGlobalArray.demoRequested = newDemoStatus;
                     attendeeInGlobalArray.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
                 } else { 
-                    // This case should ideally not happen if currentAttendeeForDemo is from allAttendees
                     attendee.demoRequested = newDemoStatus; 
                     attendee.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
                 }
