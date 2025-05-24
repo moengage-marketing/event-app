@@ -270,6 +270,9 @@
                             </table>
                             <p id="noDemoRequestsMessage" class="text-center text-gray-500 py-6 hidden">No demo requests yet.</p>
                         </div>
+                        <div class="mt-4 text-center">
+                             <button id="downloadDemoRequestsCsvButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Download Demo Requests CSV</button>
+                        </div>
                     </div>
                 </div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200 text-right">
@@ -288,9 +291,6 @@
 
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv';
         const POLLING_INTERVAL = 30000; 
-        // IMPORTANT: Replace with your actual Google Apps Script Web App URL after deployment
-        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybv6xiBVCdEwhMrxyzl8ghP2ljWZseIo2u_uhXbum8fJX4Yih71bP1PwcrbPu-EUSB/exec';
-
 
         const welcomeScreen = document.getElementById('welcomeScreen');
         const mainAppContent = document.getElementById('mainAppContent');
@@ -332,6 +332,7 @@
         const attendeeTypeChartCanvas = document.getElementById('attendeeTypeChart');
         const demoRequestsTableBody = document.getElementById('demoRequestsTableBody');
         const noDemoRequestsMessage = document.getElementById('noDemoRequestsMessage');
+        const downloadDemoRequestsCsvButton = document.getElementById('downloadDemoRequestsCsvButton');
 
 
         const loadingSpinner = document.getElementById('loadingSpinner');
@@ -363,9 +364,8 @@
             'First Name': 'firstName', 'Last Name': 'lastName', 'Email': 'email', 'Phone': 'phone',
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
             'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
-            'Notes': 'notes',
-            'Demo Requested': 'demoRequestedSheet', // For reading from sheet
-            'Demo Requested By': 'demoRequestedBySheet' // For reading from sheet
+            'Notes': 'notes'
+            // Demo Requested and Demo Requested By will be handled by Firestore, not directly from CSV mapping
         };
         const expectedHeaders = Object.keys(headerMapping);
 
@@ -417,9 +417,11 @@
             const rawHeaders = parseCSVLine(lines[0]); const data = [];
             const actualHeaders = rawHeaders.map(h => h.trim());
             
-            const missingHeaders = expectedHeaders.filter(eh => !actualHeaders.includes(eh) && eh !== 'Demo Requested' && eh !== 'Demo Requested By'); 
-            if (missingHeaders.length > 0) {
-                 console.warn('CSV headers missing/mismatched. Expected (some optional):', missingHeaders, 'Actual:', actualHeaders);
+            // Check for core headers, demo related headers are not part of this base check
+            const coreExpectedHeaders = Object.keys(headerMapping).filter(h => h !== 'Demo Requested' && h !== 'Demo Requested By');
+            const missingCoreHeaders = coreExpectedHeaders.filter(eh => !actualHeaders.includes(eh)); 
+            if (missingCoreHeaders.length > 0) {
+                 console.warn('Core CSV headers missing/mismatched. Expected:', missingCoreHeaders, 'Actual:', actualHeaders);
             }
 
             for (let i = 1; i < lines.length; i++) {
@@ -450,7 +452,7 @@
         }
         
         function sanitizeForFirestoreId(id) {
-            if (!id) return 'unknown_id';
+            if (!id) return `unknown_id_${crypto.randomUUID()}`; // Ensure some unique ID
             return id.replace(/[^a-zA-Z0-9_.-]/g, '_');
         }
 
@@ -460,23 +462,32 @@
                 const response = await fetch(GOOGLE_SHEET_CSV_URL + `&t=${new Date().getTime()}`); 
                 if (!response.ok) {
                     let errMsg = `HTTP error! Status: ${response.status}.`;
-                    switch (response.status) {
-                        case 400: errMsg += " Bad Request. Check Sheet ID/GID."; break;
-                        case 401: case 403: errMsg += " Unauthorized/Forbidden. Check Sheet permissions."; break;
-                        case 404: errMsg += " Not Found. Verify Sheet ID/GID."; break;
-                        default: errMsg += " Unexpected error.";
-                    }
+                    // ... (error handling for fetch status)
                     throw new Error(errMsg);
                 }
                 const csvText = await response.text();
                 let parsedAtt = (csvText.trim() === '') ? [] : parseCSV(csvText);
                 
-                // The demoRequested status is now directly from the sheet
-                allAttendees = parsedAtt.map(attendee => ({
-                    ...attendee,
-                    // Ensure demoRequested is a boolean based on sheet value "Yes"
-                    demoRequested: attendee.demoRequestedSheet === 'Yes' 
-                })).filter(att => (att.firstName && att.firstName.trim() !== '') || (att.lastName && att.lastName.trim() !== '') || (att.company && att.company.trim() !== '') || (att.jobTitle && att.jobTitle.trim() !== '') );
+                const attendeesWithDemoStatus = await Promise.all(parsedAtt.map(async (attendee) => {
+                    let demoRequested = false;
+                    let demoRequestedBy = '';
+                    if (db && currentUserId && attendee.email) {
+                        const safeEmailId = sanitizeForFirestoreId(attendee.email);
+                        const demoStatusRef = doc(db, "artifacts", appId, "users", currentUserId, "attendeeDemos", safeEmailId);
+                        try {
+                            const docSnap = await getDoc(demoStatusRef);
+                            if (docSnap.exists()) {
+                                demoRequested = docSnap.data().requested === true;
+                                demoRequestedBy = docSnap.data().requestedBy || '';
+                            }
+                        } catch (fsError) {
+                            console.error("Error fetching demo status for", attendee.email, fsError);
+                        }
+                    }
+                    return { ...attendee, demoRequested, demoRequestedBy };
+                }));
+
+                allAttendees = attendeesWithDemoStatus.filter(att => (att.firstName && att.firstName.trim() !== '') || (att.lastName && att.lastName.trim() !== '') || (att.company && att.company.trim() !== '') || (att.jobTitle && att.jobTitle.trim() !== '') );
                 
                 homeScreenTotalAttendeesCount.textContent = allAttendees.length;
                 
@@ -517,7 +528,7 @@
                 attendeesToRender.forEach((attendee, index) => {
                     const row = attendeesTableBody.insertRow();
                     row.className = 'hover:bg-gray-100 cursor-pointer transition-colors no-select';
-                    if (attendee.demoRequested) { // Check the boolean property
+                    if (attendee.demoRequested) { 
                         row.classList.add('demo-requested-row-active');
                     }
 
@@ -554,13 +565,13 @@
             if (isRequested) {
                 demoRequestedButtonText.textContent = 'Requested';
                 demoRequestedCheckmark.classList.remove('hidden');
-                demoRequestedButton.classList.add('bg-gray-300', 'hover:bg-gray-300', 'text-gray-500', 'cursor-default'); // More inactive style
+                demoRequestedButton.classList.add('bg-gray-300', 'hover:bg-gray-300', 'text-gray-500'); 
                 demoRequestedButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
                 attendeeModalContent.classList.add('demo-requested-active');
             } else {
                 demoRequestedButtonText.textContent = 'Demo Requested';
                 demoRequestedCheckmark.classList.add('hidden');
-                demoRequestedButton.classList.remove('bg-gray-300', 'hover:bg-gray-300', 'text-gray-500', 'cursor-default');
+                demoRequestedButton.classList.remove('bg-gray-300', 'hover:bg-gray-300', 'text-gray-500');
                 demoRequestedButton.classList.add('bg-orange-500', 'hover:bg-orange-600');
                 attendeeModalContent.classList.remove('demo-requested-active');
             }
@@ -625,7 +636,7 @@
                 if (sdr) sdrCounts[sdr] = (sdrCounts[sdr] || 0) + 1;
                 if (ae) aeCounts[ae] = (aeCounts[ae] || 0) + 1;
                 if (type && typeCounts.hasOwnProperty(type)) typeCounts[type]++;
-                if (attendee.demoRequested === true) { // Using the boolean property
+                if (attendee.demoRequested === true) { 
                     demoRequestedAttendees.push(attendee);
                 }
             });
@@ -663,7 +674,7 @@
                     row.insertCell().textContent = fullName || 'N/A';
                     row.insertCell().textContent = attendee.company || 'N/A';
                     row.insertCell().textContent = attendee.jobTitle || 'N/A';
-                    row.insertCell().textContent = attendee.demoRequestedBySheet || 'N/A'; // Display from sheet
+                    row.insertCell().textContent = attendee.demoRequestedBy || 'N/A'; 
                     Array.from(row.cells).forEach(cell => cell.className = 'px-6 py-3 whitespace-nowrap text-sm text-gray-700');
                 });
             } else {
@@ -701,7 +712,7 @@
         }
 
         async function saveUserName(name) {
-            currentUserNameFromStorage = name; // Store globally for this session
+            currentUserNameFromStorage = name; 
             if (!db || !currentUserId) {
                 console.warn("Firestore not initialized or user ID not available for saving name. Name not saved to cloud.");
                 return;
@@ -733,47 +744,74 @@
             }
         }
 
-
-        async function toggleDemoRequestAppsScript(attendee, newDemoStatus) {
-            if (!attendee || !attendee.email) {
-                alert('Error: Attendee details not found for demo request.');
-                return false;
+        async function toggleDemoRequest(attendee) {
+            if (!db || !currentUserId || !attendee || !attendee.email) {
+                console.error("Firestore not ready or attendee email missing for demo request.");
+                alert("Could not update demo request status. Please try again.");
+                return;
             }
-            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
-                alert('Developer: Google Apps Script URL not configured.');
-                return false;
-            }
-
-            const payload = {
-                email: attendee.email,
-                demoStatus: newDemoStatus ? "Yes" : "No",
-                requestedBy: newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : ""
-            };
+            const safeEmailId = sanitizeForFirestoreId(attendee.email);
+            const demoStatusRef = doc(db, "artifacts", appId, "users", currentUserId, "attendeeDemos", safeEmailId);
+            
+            const newDemoStatus = !(attendee.demoRequested === true); 
 
             try {
-                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-                if (!response.ok) {
-                    const errorBody = await response.text();
-                    console.error('Apps Script submission failed with status:', response.status, response.statusText, 'Response body:', errorBody);
-                    throw new Error(`Server responded with ${response.status}. Check console.`);
-                }
-                const result = await response.json();
-                if (result.status === 'success') {
-                    console.log(`Demo request for ${attendee.email} successfully updated in sheet to ${payload.demoStatus}.`);
-                    return true;
+                if (newDemoStatus) {
+                    await setDoc(demoStatusRef, { 
+                        requested: true, 
+                        requestedBy: currentUserNameFromStorage || "Unknown User",
+                        timestamp: new Date().toISOString() // Optional: add a timestamp
+                    });
                 } else {
-                    throw new Error(result.message || 'Failed to update sheet. Apps Script reported an error.');
+                    await deleteDoc(demoStatusRef); 
                 }
+                attendee.demoRequested = newDemoStatus; 
+                attendee.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
+                updateDemoRequestedButtonUI(newDemoStatus);
+                console.log(`Demo request for ${attendee.email} set to ${newDemoStatus} by ${currentUserNameFromStorage}`);
+                
+                // Refresh the main table to update row color
+                applyFiltersAndSearch(); 
+                // If metrics modal is open, refresh it to update the demo requests table
+                if (!metricsModal.classList.contains('hidden')) {
+                    openMetricsModal();
+                }
+
             } catch (error) {
-                console.error('Error submitting demo request to Apps Script:', error);
-                alert(`Failed to update demo status in sheet: ${error.message}`);
-                return false;
+                console.error("Error updating demo request status in Firestore:", error);
+                alert("Failed to update demo request status. Please try again.");
+            }
+        }
+
+        function downloadCSV(data, filename = 'demo-requests.csv') {
+            const csvHeader = "First Name,Last Name,Company,Job Title,Email Address,Phone,Type,Focus Account,On-ground SDR,On-ground AE,Demo Requested By\n";
+            const csvRows = data.map(row => {
+                return [
+                    `"${(row.firstName || '').replace(/"/g, '""')}"`,
+                    `"${(row.lastName || '').replace(/"/g, '""')}"`,
+                    `"${(row.company || '').replace(/"/g, '""')}"`,
+                    `"${(row.jobTitle || '').replace(/"/g, '""')}"`,
+                    `"${(row.email || '').replace(/"/g, '""')}"`,
+                    `"${(row.phone || '').replace(/"/g, '""')}"`,
+                    `"${(row.type || '').replace(/"/g, '""')}"`,
+                    `"${(row.focusAccount || '').replace(/"/g, '""')}"`,
+                    `"${(row.onGroundSDR || '').replace(/"/g, '""')}"`,
+                    `"${(row.onGroundAE || '').replace(/"/g, '""')}"`,
+                    `"${(row.demoRequestedBy || '').replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+
+            const csvString = csvHeader + csvRows;
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         }
 
@@ -795,7 +833,7 @@
                         currentUserId = `local-${crypto.randomUUID()}`;
                     }
                     console.log("Firebase Initialized. User ID for this session:", currentUserId);
-                    currentUserNameFromStorage = await getUserNameFromFirestore(); // Load stored name
+                    currentUserNameFromStorage = await getUserNameFromFirestore(); 
                 } catch (error) {
                     console.error("Critical Error during Firebase initialization:", error);
                     db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
@@ -813,8 +851,6 @@
                 setInterval(fetchAttendees, POLLING_INTERVAL);
             } else {
                  if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && !currentUserNameFromStorage) {
-                    // Edge case: welcome completed but name not in Firestore (e.g. previous Firestore error)
-                    // Still ask for name to try saving it again.
                     localStorage.removeItem('attendeeAppWelcomeCompleted'); 
                 }
                 welcomeScreen.classList.remove('hidden');
@@ -828,7 +864,7 @@
             enterAppButton.addEventListener('click', async () => {
                 const name = userNameInput.value.trim();
                 if (name) {
-                    await saveUserName(name); // This also sets currentUserNameFromStorage
+                    await saveUserName(name); 
                     localStorage.setItem('attendeeAppWelcomeCompleted', 'true'); 
                     
                     welcomeScreen.classList.add('hidden');
@@ -846,19 +882,7 @@
             
             demoRequestedButton.addEventListener('click', async () => {
                 if (currentAttendeeForDemo) {
-                    const newStatus = !(currentAttendeeForDemo.demoRequested === true);
-                    const success = await toggleDemoRequestAppsScript(currentAttendeeForDemo, newStatus);
-                    if (success) {
-                        // Optimistically update UI, actual state will come from next fetch
-                        currentAttendeeForDemo.demoRequested = newStatus; 
-                        // If Apps Script also stores 'requestedBy', we'd update that here too for immediate UI
-                        // For now, we rely on next fetch to get 'demoRequestedBySheet'
-                        updateDemoRequestedButtonUI(newStatus); 
-                        // Manually refresh the main table to reflect color change immediately
-                        const foundInAll = allAttendees.find(a => a.email === currentAttendeeForDemo.email);
-                        if(foundInAll) foundInAll.demoRequested = newStatus;
-                        applyFiltersAndSearch(); // Re-render table
-                    }
+                    await toggleDemoRequest(currentAttendeeForDemo);
                 }
             });
             
@@ -872,6 +896,15 @@
             closeMetricsModalButton.addEventListener('click', closeMetricsModal);
             closeMetricsModalFooterButton.addEventListener('click', closeMetricsModal);
             metricsModal.addEventListener('click', (e) => { if (e.target === metricsModal) closeMetricsModal(); });
+
+            downloadDemoRequestsCsvButton.addEventListener('click', () => {
+                const demoRequestedAttendees = allAttendees.filter(att => att.demoRequested === true);
+                if (demoRequestedAttendees.length > 0) {
+                    downloadCSV(demoRequestedAttendees);
+                } else {
+                    alert("No demo requests to download.");
+                }
+            });
 
             applyFiltersButton.addEventListener('click', () => {
                 currentFilters.type = filterType.value; currentFilters.focusAccount = filterFocusAccount.value;
@@ -890,3 +923,4 @@
     </script>
 </body>
 </html>
+
