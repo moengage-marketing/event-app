@@ -413,8 +413,19 @@
                 allAttendees = parsedAtt.filter(att => (att.firstName && att.firstName.trim() !== '') || (att.lastName && att.lastName.trim() !== '') || (att.company && att.company.trim() !== '') || (att.jobTitle && att.jobTitle.trim() !== '') );
                 populateFilterDropdowns(allAttendees); 
                 fetchSucceeded = true;
-            } catch (error) { console.error('Error fetching:', error); showError(`Failed to load data: ${error.message}`);
-            } finally { showLoading(false); if (fetchSucceeded) applyFiltersAndSearch(); }
+            } catch (error) { 
+                console.error('Error fetching attendees:', error);
+                let userFriendlyMessage = `Failed to load attendee data: ${error.message}.`;
+                if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+                    userFriendlyMessage += ' This often indicates a network issue or that the Google Sheet URL is inaccessible. Please check your internet connection and ensure the Google Sheet is correctly published and publicly accessible via its CSV link.';
+                }
+                showError(userFriendlyMessage);
+            } finally { 
+                showLoading(false); 
+                if (fetchSucceeded) {
+                    applyFiltersAndSearch(); 
+                }
+            }
         }
 
         function showLoading(isLoading) {
@@ -693,7 +704,7 @@
                 alert('No context recorded to submit.');
                 return;
             }
-            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
                 alert('Developer: Google Apps Script URL not configured. Please update the GOOGLE_APPS_SCRIPT_URL constant in the script.');
                 voiceStatusMessage.textContent = 'Submission endpoint not configured.';
                 return;
@@ -715,6 +726,13 @@
                         context: finalTranscript.trim()
                     }),
                 });
+
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error('Submission to Apps Script failed with status:', response.status, response.statusText, 'Response body:', errorBody);
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}. Check console for Apps Script response.`);
+                }
+                
                 const result = await response.json();
                 if (result.status === 'success') {
                     voiceStatusMessage.textContent = 'Your context will be transcribed in a couple of hours.'; 
@@ -723,11 +741,17 @@
                         fetchAttendees(); 
                     }, 2000);
                 } else {
-                    throw new Error(result.message || 'Failed to submit context.');
+                    console.error('Apps Script reported an error:', result.message);
+                    throw new Error(result.message || 'Failed to submit context. Server indicated an error.');
                 }
             } catch (error) {
-                console.error('Error submitting context:', error);
-                voiceStatusMessage.textContent = `Submission failed: ${error.message}. Please try again.`;
+                console.error('Error submitting context to Apps Script:', error);
+                let userFriendlyError = `Submission failed: ${error.message}.`;
+                 if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+                    userFriendlyError += ' This could be a network issue, CORS problem, or an issue with the Apps Script URL/deployment (e.g., not deployed correctly, wrong URL, or script error).';
+                }
+                userFriendlyError += ' Please check the browser console for more technical details and ensure the Apps Script is deployed correctly with "Anyone" access.';
+                voiceStatusMessage.textContent = userFriendlyError;
                 submitContextButton.disabled = false; 
             }
         }
@@ -800,3 +824,4 @@
     </script>
 </body>
 </html>
+
