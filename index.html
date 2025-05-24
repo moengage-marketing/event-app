@@ -365,7 +365,6 @@
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
             'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
             'Notes': 'notes'
-            // Demo Requested and Demo Requested By will be handled by Firestore, not directly from CSV mapping
         };
         const expectedHeaders = Object.keys(headerMapping);
 
@@ -417,7 +416,6 @@
             const rawHeaders = parseCSVLine(lines[0]); const data = [];
             const actualHeaders = rawHeaders.map(h => h.trim());
             
-            // Check for core headers, demo related headers are not part of this base check
             const coreExpectedHeaders = Object.keys(headerMapping).filter(h => h !== 'Demo Requested' && h !== 'Demo Requested By');
             const missingCoreHeaders = coreExpectedHeaders.filter(eh => !actualHeaders.includes(eh)); 
             if (missingCoreHeaders.length > 0) {
@@ -452,7 +450,7 @@
         }
         
         function sanitizeForFirestoreId(id) {
-            if (!id) return `unknown_id_${crypto.randomUUID()}`; // Ensure some unique ID
+            if (!id) return `unknown_id_${crypto.randomUUID()}`; 
             return id.replace(/[^a-zA-Z0-9_.-]/g, '_');
         }
 
@@ -747,7 +745,7 @@
         async function toggleDemoRequest(attendee) {
             if (!db || !currentUserId || !attendee || !attendee.email) {
                 console.error("Firestore not ready or attendee email missing for demo request.");
-                alert("Could not update demo request status. Please try again.");
+                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console.");
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
@@ -760,26 +758,34 @@
                     await setDoc(demoStatusRef, { 
                         requested: true, 
                         requestedBy: currentUserNameFromStorage || "Unknown User",
-                        timestamp: new Date().toISOString() // Optional: add a timestamp
+                        timestamp: new Date().toISOString() 
                     });
                 } else {
                     await deleteDoc(demoStatusRef); 
                 }
-                attendee.demoRequested = newDemoStatus; 
-                attendee.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
+                
+                // Update the attendee object in the allAttendees array directly
+                const attendeeInGlobalArray = allAttendees.find(a => a.email === attendee.email);
+                if (attendeeInGlobalArray) {
+                    attendeeInGlobalArray.demoRequested = newDemoStatus;
+                    attendeeInGlobalArray.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
+                } else { 
+                    // This case should ideally not happen if currentAttendeeForDemo is from allAttendees
+                    attendee.demoRequested = newDemoStatus; 
+                    attendee.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
+                }
+                
                 updateDemoRequestedButtonUI(newDemoStatus);
                 console.log(`Demo request for ${attendee.email} set to ${newDemoStatus} by ${currentUserNameFromStorage}`);
                 
-                // Refresh the main table to update row color
                 applyFiltersAndSearch(); 
-                // If metrics modal is open, refresh it to update the demo requests table
                 if (!metricsModal.classList.contains('hidden')) {
                     openMetricsModal();
                 }
 
             } catch (error) {
                 console.error("Error updating demo request status in Firestore:", error);
-                alert("Failed to update demo request status. Please try again.");
+                alert(`Failed to update demo request status: ${error.message}. Please check console for more details and ensure Firebase is correctly set up (especially Firestore rules).`);
             }
         }
 
