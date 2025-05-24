@@ -744,10 +744,14 @@
 
         async function toggleDemoRequest(attendee) {
             if (!db || !currentUserId || !attendee || !attendee.email) {
-                console.error("toggleDemoRequest PRE-CONDITION FAILED:", 
-                    {dbReady: !!db, currentUserId: currentUserId, attendeePresent: !!attendee, attendeeEmail: attendee?.email}
+                console.error(
+                    "toggleDemoRequest PRE-CONDITION FAILED:", 
+                    "\n  Firestore (db) ready:", !!db,
+                    "\n  Current User ID (currentUserId):", currentUserId,
+                    "\n  Attendee object present (attendee):", !!attendee,
+                    "\n  Attendee email (attendee?.email):", attendee?.email
                 );
-                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details.");
+                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details. Ensure Firebase is correctly configured in your environment if self-hosting.");
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
@@ -823,31 +827,54 @@
 
 
         async function initializeAppLogic() {
-            if (firebaseConfig) {
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    currentUserId = auth.currentUser?.uid; 
-                    if (!currentUserId) { 
-                        currentUserId = `local-${crypto.randomUUID()}`;
-                    }
-                    console.log("Firebase Initialized. User ID for this session:", currentUserId);
-                    currentUserNameFromStorage = await getUserNameFromFirestore(); 
-                } catch (error) {
-                    console.error("Critical Error during Firebase initialization:", error);
-                    db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
-                    alert("Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference.");
+            if (!firebaseConfig) { // Critical check upfront
+                console.error("FATAL: Firebase config (__firebase_config) is not available. App cannot initialize Firebase services.");
+                alert("Application critical error: Firebase configuration is missing. Please contact support or the administrator.");
+                // Show welcome screen as a fallback, but Firebase features won't work
+                welcomeScreen.classList.remove('hidden');
+                mainAppContent.classList.add('hidden');
+                // Disable features that depend on Firebase
+                enterAppButton.onclick = () => {
+                    localStorage.setItem('attendeeAppWelcomeCompleted', 'true'); // Allow bypassing welcome locally
+                    localStorage.setItem('attendeeAppUserName', userNameInput.value.trim()); // Store name locally
+                    currentUserNameFromStorage = userNameInput.value.trim();
+                    welcomeScreen.classList.add('hidden');
+                    mainAppContent.classList.remove('hidden');
+                    fetchAttendees(); 
+                    setInterval(fetchAttendees, POLLING_INTERVAL);
+                };
+                // Check if a name was stored locally if Firebase is unavailable
+                currentUserNameFromStorage = localStorage.getItem('attendeeAppUserName');
+                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) {
+                     welcomeScreen.classList.add('hidden');
+                     mainAppContent.classList.remove('hidden');
+                     fetchAttendees(); 
+                     setInterval(fetchAttendees, POLLING_INTERVAL);
                 }
-            } else {
-                console.warn("Firebase config not available. User name will not be saved to cloud. App will use local storage for welcome screen preference.");
-                currentUserId = `local-${crypto.randomUUID()}`;
+                return; // Stop further Firebase-dependent initialization
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                currentUserId = auth.currentUser?.uid; 
+                if (!currentUserId) { 
+                    console.warn("Firebase User ID not available after sign-in attempt. Using a temporary local ID for this session if name needs to be saved.");
+                    currentUserId = `local-${crypto.randomUUID()}`;
+                }
+                console.log("Firebase Initialized. User ID for this session:", currentUserId);
+                currentUserNameFromStorage = await getUserNameFromFirestore(); 
+            } catch (error) {
+                console.error("Critical Error during Firebase initialization:", error);
+                db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
+                alert("Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference.");
             }
 
             if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) {
@@ -857,6 +884,7 @@
                 setInterval(fetchAttendees, POLLING_INTERVAL);
             } else {
                  if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && !currentUserNameFromStorage) {
+                    // If welcome was completed but name not in Firestore (e.g. if Firestore was down then), re-ask.
                     localStorage.removeItem('attendeeAppWelcomeCompleted'); 
                 }
                 welcomeScreen.classList.remove('hidden');
@@ -929,4 +957,3 @@
     </script>
 </body>
 </html>
-
