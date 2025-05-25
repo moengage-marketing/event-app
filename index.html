@@ -480,7 +480,7 @@
                     let demoRequestedBy = '';
                     if (db && currentUserId && attendee.email) {
                         const safeEmailId = sanitizeForFirestoreId(attendee.email);
-                        const demoStatusRef = doc(db, "artifacts", appId, "users", currentUserId, "attendeeDemos", safeEmailId);
+                        const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); // Updated path
                         try {
                             const docSnap = await getDoc(demoStatusRef);
                             if (docSnap.exists()) {
@@ -762,7 +762,7 @@
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
-            const demoStatusRef = doc(db, "artifacts", appId, "users", currentUserId, "attendeeDemos", safeEmailId);
+            const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); // Use public path
             
             const newDemoStatus = !(attendee.demoRequested === true); 
 
@@ -771,6 +771,7 @@
                     await setDoc(demoStatusRef, { 
                         requested: true, 
                         requestedBy: currentUserNameFromStorage || "Unknown User",
+                        requestedByUserId: currentUserId, // Store the ID of the user who made the request
                         timestamp: new Date().toISOString() 
                     });
                 } else {
@@ -837,7 +838,7 @@
             let configErrorMessage = "Application critical error: Firebase configuration is incomplete or uses placeholders. ";
             let configIsInvalid = false;
             const placeholderValues = { 
-                apiKey: "YOUR_API_KEY", // Generic placeholder for comparison
+                apiKey: "YOUR_API_KEY", 
                 authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
                 projectId: "YOUR_PROJECT_ID",
                 storageBucket: "YOUR_PROJECT_ID.appspot.com",
@@ -849,7 +850,7 @@
                 configErrorMessage += "The entire firebaseConfig object is missing. ";
                 configIsInvalid = true;
             } else {
-                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === placeholderValues.apiKey || (firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey === "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw" && firebaseConfig.apiKey.length < 39) ){
+                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === placeholderValues.apiKey || (firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey.length < 39) ){
                      if (firebaseConfig.apiKey !== "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw") {configErrorMessage += "The Firebase API key appears to be a placeholder or is missing/invalid. "; configIsInvalid = true;}
                 }
                 if (!firebaseConfig.authDomain || firebaseConfig.authDomain.includes("YOUR_PROJECT_ID") || firebaseConfig.authDomain.trim() === "" || firebaseConfig.authDomain === placeholderValues.authDomain) {
