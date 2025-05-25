@@ -709,11 +709,9 @@
                     ((att.jobTitle || '').toLowerCase().includes(searchTermLower))
                 );
             }
-            filtered.sort((a, b) => {
-                const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
-                const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
-                if (nameA < nameB) return -1; if (nameA > nameB) return 1; return 0;
-            });
+            // Sort by check-in time (reverse order of how they appear in the sheet)
+            filtered.reverse(); 
+
             if (!loadingSpinner.classList.contains('hidden') || !errorMessage.classList.contains('hidden')) {} 
             else { attendeesTableContainer.classList.remove('hidden'); renderTable(filtered); }
         }
@@ -851,36 +849,23 @@
                 configErrorMessage += "The entire firebaseConfig object is missing. ";
                 configIsInvalid = true;
             } else {
-                // Check each essential key
-                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === placeholderValues.apiKey || firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey.length < 39 /* Typical length is ~39-40 */) {
-                    if (firebaseConfig.apiKey !== "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw") { // Allow the user-provided one if it's different from the generic placeholder start
-                         configErrorMessage += "The Firebase API key appears to be a placeholder or is missing/invalid. "; configIsInvalid = true;
-                    }
+                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === placeholderValues.apiKey || (firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey === "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw" && firebaseConfig.apiKey.length < 39) ){
+                     if (firebaseConfig.apiKey !== "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw") {configErrorMessage += "The Firebase API key appears to be a placeholder or is missing/invalid. "; configIsInvalid = true;}
                 }
                 if (!firebaseConfig.authDomain || firebaseConfig.authDomain.includes("YOUR_PROJECT_ID") || firebaseConfig.authDomain.trim() === "" || firebaseConfig.authDomain === placeholderValues.authDomain) {
-                     if (firebaseConfig.authDomain !== "attendeetrackerapp.firebaseapp.com") {
-                        configErrorMessage += "The Firebase authDomain is missing or is a placeholder. "; configIsInvalid = true;
-                     }
+                     if (firebaseConfig.authDomain !== "attendeetrackerapp.firebaseapp.com") {configErrorMessage += "The Firebase authDomain is missing or is a placeholder. "; configIsInvalid = true;}
                 }
                 if (!firebaseConfig.projectId || firebaseConfig.projectId === placeholderValues.projectId || firebaseConfig.projectId.trim() === "") {
-                     if (firebaseConfig.projectId !== "attendeetrackerapp") {
-                        configErrorMessage += "The Firebase projectId is missing or is a placeholder. "; configIsInvalid = true;
-                     }
+                     if (firebaseConfig.projectId !== "attendeetrackerapp") {configErrorMessage += "The Firebase projectId is missing or is a placeholder. "; configIsInvalid = true;}
                 }
                  if (!firebaseConfig.storageBucket || firebaseConfig.storageBucket.includes("YOUR_PROJECT_ID") || firebaseConfig.storageBucket === placeholderValues.storageBucket || firebaseConfig.storageBucket.trim() === "") {
-                     if (firebaseConfig.storageBucket !== "attendeetrackerapp.appspot.com") {
-                        configErrorMessage += "The Firebase storageBucket is missing or is a placeholder. "; configIsInvalid = true;
-                     }
+                     if (firebaseConfig.storageBucket !== "attendeetrackerapp.appspot.com") {configErrorMessage += "The Firebase storageBucket is missing or is a placeholder. "; configIsInvalid = true;}
                 }
                  if (!firebaseConfig.messagingSenderId || firebaseConfig.messagingSenderId === placeholderValues.messagingSenderId || firebaseConfig.messagingSenderId.trim() === "") {
-                     if (firebaseConfig.messagingSenderId !== "301064425215") {
-                        configErrorMessage += "The Firebase messagingSenderId is missing or is a placeholder. "; configIsInvalid = true;
-                     }
+                     if (firebaseConfig.messagingSenderId !== "301064425215") {configErrorMessage += "The Firebase messagingSenderId is missing or is a placeholder. "; configIsInvalid = true;}
                 }
                  if (!firebaseConfig.appId || firebaseConfig.appId.includes("YOUR_FIREBASE_APP_ID") || firebaseConfig.appId === placeholderValues.appId || firebaseConfig.appId.trim() === "") {
-                    if (firebaseConfig.appId !== "1:301064425215:web:17fd2b66cd2e47d9b0c6ca") {
-                        configErrorMessage += "The Firebase appId is missing or is a placeholder. "; configIsInvalid = true;
-                    }
+                    if (firebaseConfig.appId !== "1:301064425215:web:17fd2b66cd2e47d9b0c6ca") {configErrorMessage += "The Firebase appId is missing or is a placeholder. "; configIsInvalid = true;}
                 }
             }
             
@@ -920,8 +905,7 @@
                         await signInWithCustomToken(auth, __initial_auth_token);
                         console.log("Signed in with custom token.");
                     } catch (customTokenError) {
-                        console.warn("Custom token sign-in failed (e.g., mismatch with config):", customTokenError.code, customTokenError.message);
-                        console.log("Falling back to anonymous sign-in.");
+                        console.warn("Custom token sign-in failed:", customTokenError.code, customTokenError.message, ". This can happen if the token is for a different Firebase project than configured in firebaseConfig, or if the token is malformed/expired. Falling back to anonymous sign-in.");
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously after custom token failure.");
                     }
@@ -941,7 +925,7 @@
                 console.error("Critical Error during Firebase initialization or Auth:", error);
                 let specificErrorAlert = "Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference. Error: " + error.message;
                 if (error.code === 'auth/configuration-not-found') {
-                    specificErrorAlert = "Firebase Authentication configuration error. This means the details in 'firebaseConfig' (apiKey, authDomain, projectId, etc.) are incorrect or not recognized by Firebase. Please METICULOUSLY verify these values in the script against your Firebase project console. Also, ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings.";
+                    specificErrorAlert = "Firebase Authentication configuration error (auth/configuration-not-found). This means the details in 'firebaseConfig' (apiKey, authDomain, projectId, etc.) are incorrect or not recognized by Firebase. Please METICULOUSLY verify these values in the script against your Firebase project console. Also, ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings.";
                 }
                 alert(specificErrorAlert);
                 db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
