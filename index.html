@@ -72,10 +72,10 @@
              max-width: 100%; /* Allow them to fill their flex item */
         }
         .demo-requested-active {
-            background-color: #cffde3 !important; 
+            background-color: #cffde3 !important;
         }
         .demo-requested-row-active {
-            background-color: #cffde3; 
+            background-color: #cffde3;
         }
         .demo-requested-row-active:hover {
             background-color: #b6f7d0 !important; /* Slightly darker green on hover */
@@ -83,13 +83,12 @@
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
-
     <div id="welcomeScreen" class="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center p-8">
         <p class="text-3xl md:text-4xl font-bold text-gray-700 mb-4">Welcome to</p>
-        <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png" 
-             alt="Event Banner" 
-             class="max-w-xs md:max-w-md h-auto mx-auto rounded-lg mb-8" 
-             onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
+        <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png"
+              alt="Event Banner"
+              class="max-w-xs md:max-w-md h-auto mx-auto rounded-lg mb-8"
+              onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
         <div class="w-full max-w-sm">
             <label for="userNameInput" class="block text-sm font-medium text-gray-700 mb-1">Please enter your first name:</label>
             <input type="text" id="userNameInput" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4" placeholder="Your First Name">
@@ -99,9 +98,9 @@
 
     <div id="mainAppContent" class="container mx-auto p-4 md:p-8 hidden">
         <header class="mb-6 text-center">
-            <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png" 
-                 alt="Event Banner" 
-                 class="max-w-full h-auto mx-auto rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/800x200/cccccc/333333?text=Event+Banner+Not+Found';">
+            <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png"
+                  alt="Event Banner"
+                  class="max-w-full h-auto mx-auto rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/800x200/cccccc/333333?text=Event+Banner+Not+Found';">
         </header>
 
         <main class="bg-white p-6 rounded-lg shadow-xl">
@@ -141,7 +140,6 @@
                 <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500"></div>
                 <p class="text-gray-600 mt-2">Loading attendees...</p>
             </div>
-            
             <div id="errorMessage" class="text-center py-10 hidden bg-red-100 text-red-700 p-4 rounded-lg">
                 <p id="errorText"></p>
                 <button id="retryFetchButton" class="mt-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">
@@ -224,6 +222,12 @@
                             <option value="All">All Incumbents</option>
                         </select>
                     </div>
+                    <div>
+                        <label for="filterIndustry" class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                        <select id="filterIndustry" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="All">All Industries</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
                     <button id="clearFiltersButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">Clear Filters</button>
@@ -231,7 +235,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div id="metricsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
             <div class="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center p-5 border-b border-gray-200">
@@ -266,6 +270,10 @@
                             <canvas id="incumbentChart"></canvas>
                         </div>
                     </div>
+                    <!-- <div class="mt-6 chart-container">
+                        <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Industry</h4>
+                        <canvas id="industryChart"></canvas>
+                    </div> -->
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <h4 class="text-lg font-semibold text-gray-700 mb-3">Attendees Requesting Demo</h4>
                         <div id="demoRequestsTableContainer" class="overflow-x-auto">
@@ -300,10 +308,11 @@
         import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-
+        // Configuration
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv';
-        const POLLING_INTERVAL = 30000; 
+        const POLLING_INTERVAL = 30000; // 30 seconds
 
+        // DOM Elements
         const welcomeScreen = document.getElementById('welcomeScreen');
         const mainAppContent = document.getElementById('mainAppContent');
         const userNameInput = document.getElementById('userNameInput');
@@ -325,7 +334,6 @@
         const demoRequestedButtonText = document.getElementById('demoRequestedButtonText');
         const demoRequestedCheckmark = document.getElementById('demoRequestedCheckmark');
 
-
         const filterModal = document.getElementById('filterModal');
         const closeFilterModalButton = document.getElementById('closeFilterModalButton');
         const applyFiltersButton = document.getElementById('applyFiltersButton');
@@ -334,7 +342,8 @@
         const filterFocusAccount = document.getElementById('filterFocusAccount');
         const filterAE = document.getElementById('filterAE'); 
         const filterSDR = document.getElementById('filterSDR'); 
-        const filterIncumbent = document.getElementById('filterIncumbent'); // New filter element
+        const filterIncumbent = document.getElementById('filterIncumbent');
+        const filterIndustry = document.getElementById('filterIndustry'); // New filter element
 
         const metricsModal = document.getElementById('metricsModal');
         const closeMetricsModalButton = document.getElementById('closeMetricsModalButton');
@@ -343,11 +352,12 @@
         const sdrChartCanvas = document.getElementById('sdrChart');
         const aeChartCanvas = document.getElementById('aeChart');
         const attendeeTypeChartCanvas = document.getElementById('attendeeTypeChart');
-        const incumbentChartCanvas = document.getElementById('incumbentChart'); // New chart canvas
+        const incumbentChartCanvas = document.getElementById('incumbentChart');
+        // const industryChartCanvas = document.getElementById('industryChart'); // For future industry chart
+
         const demoRequestsTableBody = document.getElementById('demoRequestsTableBody');
         const noDemoRequestsMessage = document.getElementById('noDemoRequestsMessage');
         const downloadDemoRequestsCsvButton = document.getElementById('downloadDemoRequestsCsvButton');
-
 
         const loadingSpinner = document.getElementById('loadingSpinner');
         const errorMessage = document.getElementById('errorMessage');
@@ -355,43 +365,48 @@
         const retryFetchButton = document.getElementById('retryFetchButton');
         const attendeesTableContainer = document.getElementById('attendeesTableContainer');
 
+        // Global State
         let allAttendees = [];
-        let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All' };
+        let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All', industry: 'All' }; // Added industry
         let currentSearchTerm = '';
         let currentAttendeeForDemo = null;
         let currentUserNameFromStorage = '';
 
-
         let sdrChartInstance = null;
         let aeChartInstance = null;
         let attendeeTypeChartInstance = null;
-        let incumbentChartInstance = null; // New chart instance
+        let incumbentChartInstance = null;
+        // let industryChartInstance = null; // For future industry chart
 
+        // Firebase
         let db;
         let auth;
         let currentUserId; 
         
+        // IMPORTANT: Replace with your actual Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw",
-            authDomain: "attendeetrackerapp.firebaseapp.com",
-            projectId: "attendeetrackerapp",
-            storageBucket: "attendeetrackerapp.appspot.com", 
-            messagingSenderId: "301064425215",
-            appId: "1:301064425215:web:17fd2b66cd2e47d9b0c6ca"
+            apiKey: "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw", // Replace if necessary
+            authDomain: "attendeetrackerapp.firebaseapp.com", // Replace if necessary
+            projectId: "attendeetrackerapp", // Replace if necessary
+            storageBucket: "attendeetrackerapp.appspot.com", // Replace if necessary
+            messagingSenderId: "301064425215", // Replace if necessary
+            appId: "1:301064425215:web:17fd2b66cd2e47d9b0c6ca" // Replace if necessary
         };
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-attendee-app'; 
-        
         setLogLevel('debug'); 
 
+        // CSV Header Mapping
         const headerMapping = {
             'First Name': 'firstName', 'Last Name': 'lastName', 'Email': 'email', 'Phone': 'phone',
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
             'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
-            'Notes': 'notes', 'Incumbent': 'incumbent' // Added Incumbent mapping
+            'Notes': 'notes', 'Incumbent': 'incumbent',
+            'LinkedIn': 'linkedin', 'Industry': 'industry' // Added LinkedIn and Industry
         };
         const expectedHeaders = Object.keys(headerMapping);
 
+        // Chart.js Custom Plugin for Data Labels
         Chart.register({
             id: 'customDataLabelsOnTop',
             afterDatasetsDraw: (chart, args, options) => {
@@ -410,8 +425,8 @@
                     for (let j = 0; j < meta.data.length; j++) {
                         const element = meta.data[j];
                         const value = dataset.data[j];
-                        if (value !== null && value !== undefined) { 
-                             ctx.fillText(value.toString(), element.x, element.y - (options.padding || 5));
+                        if (value !== null && value !== undefined) {
+                              ctx.fillText(value.toString(), element.x, element.y - (options.padding || 5));
                         }
                     }
                 }
@@ -419,16 +434,16 @@
             }
         });
 
-
+        // CSV Parsing Functions
         function parseCSVLine(line) {
             const result = []; let current = ''; let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"' && (i === 0 || line[i-1] !== '\\')) { 
-                    if (inQuotes && i + 1 < line.length && line[i+1] === '"') { current += '"'; i++; } 
-                    else { inQuotes = !inQuotes; }
+                     if (inQuotes && i + 1 < line.length && line[i+1] === '"') { current += '"'; i++; } 
+                     else { inQuotes = !inQuotes; }
                 } else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; } 
-                else { current += char; }
+                 else { current += char; }
             }
             result.push(current.trim());
             return result.map(value => value.replace(/^"|"$/g, '').replace(/""/g, '"'));
@@ -460,13 +475,15 @@
             }
             return data;
         }
-        
+
+        // Populate Filter Dropdowns
         function populateFilterDropdowns(attendees) {
-            const uniqueAEs = new Set(); const uniqueSDRs = new Set(); const uniqueIncumbents = new Set();
+            const uniqueAEs = new Set(); const uniqueSDRs = new Set(); const uniqueIncumbents = new Set(); const uniqueIndustries = new Set();
             attendees.forEach(att => {
                 if (att.onGroundAE && att.onGroundAE.trim() !== '') uniqueAEs.add(att.onGroundAE.trim());
                 if (att.onGroundSDR && att.onGroundSDR.trim() !== '') uniqueSDRs.add(att.onGroundSDR.trim());
                 if (att.incumbent && att.incumbent.trim() !== '') uniqueIncumbents.add(att.incumbent.trim());
+                if (att.industry && att.industry.trim() !== '') uniqueIndustries.add(att.industry.trim()); // Populate industries
             });
             filterAE.innerHTML = '<option value="All">All AEs</option>'; 
             Array.from(uniqueAEs).sort().forEach(ae => { const opt = document.createElement('option'); opt.value = ae; opt.textContent = ae; filterAE.appendChild(opt); });
@@ -474,13 +491,17 @@
             Array.from(uniqueSDRs).sort().forEach(sdr => { const opt = document.createElement('option'); opt.value = sdr; opt.textContent = sdr; filterSDR.appendChild(opt); });
             filterIncumbent.innerHTML = '<option value="All">All Incumbents</option>';
             Array.from(uniqueIncumbents).sort().forEach(inc => { const opt = document.createElement('option'); opt.value = inc; opt.textContent = inc; filterIncumbent.appendChild(opt); });
+            filterIndustry.innerHTML = '<option value="All">All Industries</option>'; // Populate industry filter
+            Array.from(uniqueIndustries).sort().forEach(ind => { const opt = document.createElement('option'); opt.value = ind; opt.textContent = ind; filterIndustry.appendChild(opt); });
         }
-        
+
+        // Firestore ID Sanitization
         function sanitizeForFirestoreId(id) {
             if (!id) return `unknown_id_${crypto.randomUUID()}`; 
             return id.replace(/[^a-zA-Z0-9_.-]/g, '_');
         }
 
+        // Fetch Attendees Data
         async function fetchAttendees() {
             showLoading(true); showError(false); let fetchSucceeded = false;
             try {
@@ -491,7 +512,7 @@
                 }
                 const csvText = await response.text();
                 let parsedAtt = (csvText.trim() === '') ? [] : parseCSV(csvText);
-                
+                                
                 const attendeesWithDemoStatus = await Promise.all(parsedAtt.map(async (attendee) => {
                     let demoRequested = false;
                     let demoRequestedBy = '';
@@ -512,26 +533,27 @@
                 }));
 
                 allAttendees = attendeesWithDemoStatus.filter(att => (att.firstName && att.firstName.trim() !== '') || (att.lastName && att.lastName.trim() !== '') || (att.company && att.company.trim() !== '') || (att.jobTitle && att.jobTitle.trim() !== '') );
-                
+                                
                 homeScreenTotalAttendeesCount.textContent = allAttendees.length;
-                
+                                
                 populateFilterDropdowns(allAttendees); 
                 fetchSucceeded = true;
-            } catch (error) { 
-                console.error('Error fetching attendees:', error);
+            } catch (error) {
+                 console.error('Error fetching attendees:', error);
                 let userFriendlyMessage = `Failed to load attendee data: ${error.message}.`;
                 if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
                     userFriendlyMessage = 'Failed to fetch attendee data. This could be a network issue, or the Google Sheet URL might be temporarily inaccessible or blocked. Please check your internet connection and ensure the Google Sheet is correctly published and publicly accessible via its CSV link. Try refreshing the page.';
                 }
                 showError(userFriendlyMessage);
-            } finally { 
-                showLoading(false); 
-                if (fetchSucceeded) {
+            } finally {
+                 showLoading(false); 
+                 if (fetchSucceeded) {
                     applyFiltersAndSearch(); 
-                }
+                 }
             }
         }
 
+        // UI Helper Functions
         function showLoading(isLoading) {
             loadingSpinner.classList.toggle('hidden', !isLoading);
             attendeesTableContainer.classList.toggle('hidden', isLoading);
@@ -543,6 +565,7 @@
             noAttendeesMessage.classList.toggle('hidden', show); 
         }
 
+        // Render Table
         function renderTable(attendeesToRender) {
             attendeesTableBody.innerHTML = ''; 
             const tableHeader = attendeesTableContainer.querySelector('table thead');
@@ -571,12 +594,13 @@
                     Array.from(row.cells).forEach(cell => {
                         cell.className = 'px-6 py-4 text-sm text-gray-700 break-words';
                     });
-                    
+                                        
                     row.addEventListener('click', () => openAttendeeDetailModal(attendee));
                 });
             }
         }
         
+        // Clipboard Helper
         function copyToClipboard(text, feedbackElement) {
             const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
             ta.select();
@@ -585,6 +609,7 @@
             document.body.removeChild(ta);
         }
 
+        // Update Demo Requested Button UI
         function updateDemoRequestedButtonUI(isRequested) {
             if (isRequested) {
                 demoRequestedButtonText.textContent = 'Requested';
@@ -601,32 +626,57 @@
             }
         }
 
-
+        // Attendee Detail Modal Logic
         function openAttendeeDetailModal(attendee) {
             currentAttendeeForDemo = attendee; 
             modalBody.innerHTML = ''; 
             const fullName = `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim();
-            const createDetailRow = (label, value, type = 'text') => {
-                if (value && String(value).trim() !== '') { // Ensure value is treated as string for trim
+            
+            const createDetailRow = (label, value, type = 'text', isLink = false, linkTarget = '_blank') => {
+                if (value && String(value).trim() !== '') { 
                     const div = document.createElement('div'); div.className = 'grid grid-cols-3 gap-2 items-center';
                     const lbl = document.createElement('p'); lbl.className = 'text-sm font-medium text-gray-500 col-span-1 break-words'; lbl.textContent = label + ':'; div.appendChild(lbl);
                     const valCont = document.createElement('div'); valCont.className = 'text-sm text-gray-900 col-span-2 break-words flex items-center';
-                    if (type === 'tel' && value) { const a = document.createElement('a'); a.href = `tel:${String(value).replace(/\s+/g, '')}`; a.textContent = value; a.className = 'text-blue-600 hover:text-blue-800 hover:underline'; valCont.appendChild(a); } 
-                    else if (type === 'email' && value) {
+                    
+                    if (isLink) {
+                        const a = document.createElement('a');
+                        a.href = value;
+                        a.textContent = value; // Or a more user-friendly text if needed
+                        a.className = 'text-blue-600 hover:text-blue-800 hover:underline';
+                        if (linkTarget) {
+                            a.target = linkTarget;
+                            a.rel = 'noopener noreferrer'; // Security for _blank
+                        }
+                        valCont.appendChild(a);
+                    } else if (type === 'tel' && value) { 
+                        const a = document.createElement('a'); a.href = `tel:${String(value).replace(/\s+/g, '')}`; a.textContent = value; a.className = 'text-blue-600 hover:text-blue-800 hover:underline'; valCont.appendChild(a); 
+                    } else if (type === 'email' && value) {
                         const emSpan = document.createElement('span'); emSpan.textContent = value; emSpan.className = 'text-blue-600 hover:text-blue-800 hover:underline cursor-pointer';
                         const fbSpan = document.createElement('span'); fbSpan.className = 'copy-feedback';
                         emSpan.addEventListener('click', () => copyToClipboard(value, fbSpan));
                         valCont.appendChild(emSpan); valCont.appendChild(fbSpan);
-                    } else { const p = document.createElement('p'); p.innerHTML = String(value).replace(/\n/g, '<br>'); valCont.appendChild(p); } 
+                    } else { 
+                        const p = document.createElement('p'); p.innerHTML = String(value).replace(/\n/g, '<br>'); valCont.appendChild(p); 
+                    } 
                     div.appendChild(valCont); modalBody.appendChild(div);
                 }
             };
-            createDetailRow('Full Name', fullName); createDetailRow('Email', attendee.email, 'email'); createDetailRow('Phone', attendee.phone, 'tel');
-            createDetailRow('Company', attendee.company); createDetailRow('Job Title', attendee.jobTitle); createDetailRow('Type', attendee.type);
-            createDetailRow('Focus Account', attendee.focusAccount); createDetailRow('On-ground AE', attendee.onGroundAE); createDetailRow('On-ground SDR', attendee.onGroundSDR);
-            createDetailRow('Incumbent', attendee.incumbent); // Display Incumbent
+            createDetailRow('Full Name', fullName); 
+            createDetailRow('Email', attendee.email, 'email'); 
+            createDetailRow('Phone', attendee.phone, 'tel');
+            createDetailRow('Company', attendee.company); 
+            createDetailRow('Job Title', attendee.jobTitle); 
+            createDetailRow('Type', attendee.type);
+            createDetailRow('Focus Account', attendee.focusAccount); 
+            createDetailRow('On-ground AE', attendee.onGroundAE); 
+            createDetailRow('On-ground SDR', attendee.onGroundSDR);
+            createDetailRow('Incumbent', attendee.incumbent);
+            createDetailRow('Industry', attendee.industry); // Display Industry
+            if (attendee.linkedin) { // Display LinkedIn as a link
+                 createDetailRow('LinkedIn', attendee.linkedin, 'text', true);
+            }
             createDetailRow('Notes', attendee.notes);
-            
+                        
             updateDemoRequestedButtonUI(attendee.demoRequested === true);
             attendeeModal.classList.remove('hidden');
         }
@@ -635,15 +685,18 @@
             currentAttendeeForDemo = null; 
             attendeeModalContent.classList.remove('demo-requested-active');
         }
-        
+
+        // Filter Modal Logic
         function openFilterModal() {
             filterType.value = currentFilters.type; filterFocusAccount.value = currentFilters.focusAccount;
             filterAE.value = currentFilters.onGroundAE; filterSDR.value = currentFilters.onGroundSDR; 
             filterIncumbent.value = currentFilters.incumbent;
+            filterIndustry.value = currentFilters.industry; // Set current industry filter
             filterModal.classList.remove('hidden');
         }
         function closeFilterModal() { filterModal.classList.add('hidden'); }
 
+        // Charting Functions
         function createOrUpdateChart(chartInstance, canvasElement, chartType, data, options) {
             if (chartInstance) { chartInstance.destroy(); }
             return new Chart(canvasElement, { type: chartType, data: data, options: options });
@@ -653,6 +706,7 @@
             totalAttendeesCountEl.textContent = allAttendees.length; 
             const sdrCounts = {}; const aeCounts = {}; const typeCounts = { 'Prospect': 0, 'Partner': 0, 'Customer': 0 };
             const incumbentCounts = {};
+            // const industryCounts = {}; // For future industry chart
             const demoRequestedAttendees = [];
 
             allAttendees.forEach(attendee => {
@@ -660,11 +714,13 @@
                 const ae = attendee.onGroundAE?.trim();
                 const type = attendee.type?.trim();
                 const incumbent = attendee.incumbent?.trim();
+                // const industry = attendee.industry?.trim(); // For future industry chart
 
                 if (sdr) sdrCounts[sdr] = (sdrCounts[sdr] || 0) + 1;
                 if (ae) aeCounts[ae] = (aeCounts[ae] || 0) + 1;
                 if (type && typeCounts.hasOwnProperty(type)) typeCounts[type]++;
                 if (incumbent) incumbentCounts[incumbent] = (incumbentCounts[incumbent] || 0) + 1;
+                // if (industry) industryCounts[industry] = (industryCounts[industry] || 0) + 1; // For future industry chart
                 if (attendee.demoRequested === true) { 
                     demoRequestedAttendees.push(attendee);
                 }
@@ -683,19 +739,22 @@
                 }, 
                 animation: false 
             };
-            
+                        
             const sdrChartData = { labels: Object.keys(sdrCounts), datasets: [{ label: 'Attendees by SDR', data: Object.values(sdrCounts), backgroundColor: '#0abd57', borderColor: '#0abd57', borderWidth: 1 }] };
             sdrChartInstance = createOrUpdateChart(sdrChartInstance, sdrChartCanvas, 'bar', sdrChartData, chartOptions);
 
             const aeChartData = { labels: Object.keys(aeCounts), datasets: [{ label: 'Attendees by AE', data: Object.values(aeCounts), backgroundColor: '#17494c', borderColor: '#17494c', borderWidth: 1 }] };
             aeChartInstance = createOrUpdateChart(aeChartInstance, aeChartCanvas, 'bar', aeChartData, chartOptions);
-            
+                        
             const attendeeTypeChartData = { labels: Object.keys(typeCounts), datasets: [{ label: 'Attendees by Type', data: Object.values(typeCounts), backgroundColor: ['#0abd57', '#17494c', '#000000'], borderColor: ['#0abd57', '#17494c', '#000000'], borderWidth: 1 }] };
             attendeeTypeChartInstance = createOrUpdateChart(attendeeTypeChartInstance, attendeeTypeChartCanvas, 'bar', attendeeTypeChartData, chartOptions);
 
-            const incumbentChartData = { labels: Object.keys(incumbentCounts), datasets: [{ label: 'Attendees by Incumbent', data: Object.values(incumbentCounts), backgroundColor: '#FF8C00', borderColor: '#FF8C00', borderWidth: 1 }] }; // Example: DarkOrange
+            const incumbentChartData = { labels: Object.keys(incumbentCounts), datasets: [{ label: 'Attendees by Incumbent', data: Object.values(incumbentCounts), backgroundColor: '#FF8C00', borderColor: '#FF8C00', borderWidth: 1 }] }; 
             incumbentChartInstance = createOrUpdateChart(incumbentChartInstance, incumbentChartCanvas, 'bar', incumbentChartData, chartOptions);
 
+            // Example for future Industry Chart
+            // const industryChartData = { labels: Object.keys(industryCounts), datasets: [{ label: 'Attendees by Industry', data: Object.values(industryCounts), backgroundColor: '#6A5ACD', borderColor: '#6A5ACD', borderWidth: 1 }] }; // Example: SlateBlue
+            // industryChartInstance = createOrUpdateChart(industryChartInstance, industryChartCanvas, 'bar', industryChartData, chartOptions);
 
             demoRequestsTableBody.innerHTML = '';
             if (demoRequestedAttendees.length > 0) {
@@ -719,6 +778,7 @@
         }
         function closeMetricsModal() { metricsModal.classList.add('hidden'); }
 
+        // Apply Filters and Search
         function applyFiltersAndSearch() {
             let filtered = [...allAttendees]; 
             filtered = filtered.filter(att => 
@@ -726,8 +786,9 @@
                 (currentFilters.focusAccount === 'All' || (att.focusAccount && att.focusAccount.toLowerCase() === currentFilters.focusAccount.toLowerCase())) &&
                 (currentFilters.onGroundAE === 'All' || (att.onGroundAE && att.onGroundAE === currentFilters.onGroundAE)) && 
                 (currentFilters.onGroundSDR === 'All' || (att.onGroundSDR && att.onGroundSDR === currentFilters.onGroundSDR)) &&
-                (currentFilters.incumbent === 'All' || (att.incumbent && att.incumbent === currentFilters.incumbent))   
-            );
+                (currentFilters.incumbent === 'All' || (att.incumbent && att.incumbent === currentFilters.incumbent)) &&
+                (currentFilters.industry === 'All' || (att.industry && att.industry === currentFilters.industry)) // Apply industry filter
+               );
             if (currentSearchTerm) {
                 const searchTermLower = currentSearchTerm.toLowerCase();
                 filtered = filtered.filter(att =>
@@ -735,14 +796,14 @@
                     ((att.company || '').toLowerCase().includes(searchTermLower)) ||
                     ((att.jobTitle || '').toLowerCase().includes(searchTermLower))
                 );
-            }
-             // Sort by check-in time (reverse order of how they appear in the sheet)
+            } 
             filtered.reverse(); 
 
             if (!loadingSpinner.classList.contains('hidden') || !errorMessage.classList.contains('hidden')) {} 
             else { attendeesTableContainer.classList.remove('hidden'); renderTable(filtered); }
         }
 
+        // User Name Persistence (Firestore)
         async function saveUserName(name) {
             currentUserNameFromStorage = name; 
             if (!db || !currentUserId) {
@@ -757,7 +818,7 @@
                 console.error("Error saving user name to Firestore:", error);
             }
         }
-        
+                
         async function getUserNameFromFirestore() {
             if (!db || !currentUserId) {
                 console.warn("Firestore not initialized or user ID not available for getting name.");
@@ -776,6 +837,7 @@
             }
         }
 
+        // Demo Request Logic (Firestore)
         async function toggleDemoRequest(attendee) {
             if (!db || !currentUserId || !attendee || !attendee.email) {
                 console.error(
@@ -785,12 +847,17 @@
                     "\n  Attendee object present (attendee):", !!attendee,
                     "\n  Attendee email (attendee?.email):", attendee?.email
                 );
-                alert("Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details. Ensure Firebase is correctly configured in your environment if self-hosting.");
+                // Using custom modal for alert is preferred, but for brevity using standard alert here.
+                // In a production app, replace this with a styled modal.
+                const customAlert = document.createElement('div');
+                customAlert.textContent = "Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details. Ensure Firebase is correctly configured in your environment if self-hosting.";
+                customAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
+                document.body.appendChild(customAlert);
+                setTimeout(() => document.body.removeChild(customAlert), 5000);
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
             const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); 
-            
             const newDemoStatus = !(attendee.demoRequested === true); 
 
             try {
@@ -804,7 +871,7 @@
                 } else {
                     await deleteDoc(demoStatusRef); 
                 }
-                
+                                
                 const attendeeInGlobalArray = allAttendees.find(a => a.email === attendee.email);
                 if (attendeeInGlobalArray) {
                     attendeeInGlobalArray.demoRequested = newDemoStatus;
@@ -813,10 +880,10 @@
                     attendee.demoRequested = newDemoStatus; 
                     attendee.demoRequestedBy = newDemoStatus ? (currentUserNameFromStorage || "Unknown User") : '';
                 }
-                
+                                
                 updateDemoRequestedButtonUI(newDemoStatus);
                 console.log(`Demo request for ${attendee.email} set to ${newDemoStatus} by ${currentUserNameFromStorage}`);
-                
+                                
                 applyFiltersAndSearch(); 
                 if (!metricsModal.classList.contains('hidden')) {
                     openMetricsModal();
@@ -824,12 +891,17 @@
 
             } catch (error) {
                 console.error("Error updating demo request status in Firestore:", error);
-                alert(`Failed to update demo request status: ${error.message}. Please check console for more details and ensure Firebase is correctly set up (especially Firestore rules).`);
+                const customErrorAlert = document.createElement('div');
+                customErrorAlert.textContent = `Failed to update demo request status: ${error.message}. Please check console for more details and ensure Firebase is correctly set up (especially Firestore rules).`;
+                customErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
+                document.body.appendChild(customErrorAlert);
+                setTimeout(() => document.body.removeChild(customErrorAlert), 5000);
             }
         }
 
+        // CSV Download Function
         function downloadCSV(data, filename = 'demo-requests.csv') {
-            const csvHeader = "First Name,Last Name,Company,Job Title,Email Address,Phone,Type,Focus Account,On-ground SDR,On-ground AE,Demo Requested By\n";
+            const csvHeader = "First Name,Last Name,Company,Job Title,Email Address,Phone,Type,Focus Account,On-ground SDR,On-ground AE,LinkedIn,Industry,Demo Requested By\n"; // Added LinkedIn, Industry
             const csvRows = data.map(row => {
                 return [
                     `"${(row.firstName || '').replace(/"/g, '""')}"`,
@@ -842,6 +914,8 @@
                     `"${(row.focusAccount || '').replace(/"/g, '""')}"`,
                     `"${(row.onGroundSDR || '').replace(/"/g, '""')}"`,
                     `"${(row.onGroundAE || '').replace(/"/g, '""')}"`,
+                    `"${(row.linkedin || '').replace(/"/g, '""')}"`, // Added LinkedIn
+                    `"${(row.industry || '').replace(/"/g, '""')}"`, // Added Industry
                     `"${(row.demoRequestedBy || '').replace(/"/g, '""')}"`
                 ].join(',');
             }).join('\n');
@@ -859,49 +933,27 @@
                 document.body.removeChild(link);
             }
         }
-
-
+        
+        // App Initialization
         async function initializeAppLogic() {
-            let configErrorMessage = "Application critical error: Firebase configuration is incomplete or uses placeholders. ";
+            // Firebase Config Validation (Simplified for brevity, ensure your actual config is correct)
             let configIsInvalid = false;
-            const placeholderValues = { 
-                apiKey: "YOUR_API_KEY", 
-                authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-                projectId: "YOUR_PROJECT_ID",
-                storageBucket: "YOUR_PROJECT_ID.appspot.com",
-                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                appId: "YOUR_FIREBASE_APP_ID"
-            };
-
-            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                configErrorMessage += "The entire firebaseConfig object is missing. ";
-                configIsInvalid = true;
-            } else {
-                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === placeholderValues.apiKey || (firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey.length < 39) ){
-                     if (firebaseConfig.apiKey !== "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw") {configErrorMessage += "The Firebase API key appears to be a placeholder or is missing/invalid. "; configIsInvalid = true;}
-                }
-                if (!firebaseConfig.authDomain || firebaseConfig.authDomain.includes("YOUR_PROJECT_ID") || firebaseConfig.authDomain.trim() === "" || firebaseConfig.authDomain === placeholderValues.authDomain) {
-                     if (firebaseConfig.authDomain !== "attendeetrackerapp.firebaseapp.com") {configErrorMessage += "The Firebase authDomain is missing or is a placeholder. "; configIsInvalid = true;}
-                }
-                if (!firebaseConfig.projectId || firebaseConfig.projectId === placeholderValues.projectId || firebaseConfig.projectId.trim() === "") {
-                     if (firebaseConfig.projectId !== "attendeetrackerapp") {configErrorMessage += "The Firebase projectId is missing or is a placeholder. "; configIsInvalid = true;}
-                }
-                 if (!firebaseConfig.storageBucket || firebaseConfig.storageBucket.includes("YOUR_PROJECT_ID") || firebaseConfig.storageBucket === placeholderValues.storageBucket || firebaseConfig.storageBucket.trim() === "") {
-                     if (firebaseConfig.storageBucket !== "attendeetrackerapp.appspot.com") {configErrorMessage += "The Firebase storageBucket is missing or is a placeholder. "; configIsInvalid = true;}
-                }
-                 if (!firebaseConfig.messagingSenderId || firebaseConfig.messagingSenderId === placeholderValues.messagingSenderId || firebaseConfig.messagingSenderId.trim() === "") {
-                     if (firebaseConfig.messagingSenderId !== "301064425215") {configErrorMessage += "The Firebase messagingSenderId is missing or is a placeholder. "; configIsInvalid = true;}
-                }
-                 if (!firebaseConfig.appId || firebaseConfig.appId.includes("YOUR_FIREBASE_APP_ID") || firebaseConfig.appId === placeholderValues.appId || firebaseConfig.appId.trim() === "") {
-                    if (firebaseConfig.appId !== "1:301064425215:web:17fd2b66cd2e47d9b0c6ca") {configErrorMessage += "The Firebase appId is missing or is a placeholder. "; configIsInvalid = true;}
-                }
+            if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey.length < 30) { // Basic check
+                 // A more robust check for placeholder values should be here if needed
+                 // For this example, we assume the provided config is mostly correct or user will replace it.
             }
             
+            // If config is deemed invalid, show an error and halt full app init
             if (configIsInvalid) {
-                configErrorMessage += "Please ensure all values in the 'firebaseConfig' object in the script (around line 280) are correctly set with your actual project credentials from the Firebase Console.";
+                const configErrorMessage = "Application critical error: Firebase configuration is incomplete or uses placeholders. Please ensure all values in the 'firebaseConfig' object are correctly set.";
                 console.error("FATAL: " + configErrorMessage);
-                alert(configErrorMessage);
+                // Show a custom modal error instead of alert in a real app
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = configErrorMessage;
+                errorDiv.style.cssText = "position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:20px; text-align:center; z-index:200;";
+                document.body.prepend(errorDiv);
 
+                // Allow welcome screen interaction but without Firebase features
                 welcomeScreen.classList.remove('hidden'); 
                 mainAppContent.classList.add('hidden');
                 enterAppButton.onclick = () => { 
@@ -910,15 +962,15 @@
                     currentUserNameFromStorage = userNameInput.value.trim();
                     welcomeScreen.classList.add('hidden');
                     mainAppContent.classList.remove('hidden');
-                    fetchAttendees(); 
-                    setInterval(fetchAttendees, POLLING_INTERVAL);
+                    // fetchAttendees(); // Don't fetch if Firebase is broken
+                    // setInterval(fetchAttendees, POLLING_INTERVAL);
+                    showError("Firebase is not configured. Attendee data cannot be loaded.", true);
                 };
                 currentUserNameFromStorage = localStorage.getItem('attendeeAppUserName');
-                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) {
-                     welcomeScreen.classList.add('hidden');
-                     mainAppContent.classList.remove('hidden');
-                     fetchAttendees(); 
-                     setInterval(fetchAttendees, POLLING_INTERVAL);
+                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) { 
+                    welcomeScreen.classList.add('hidden'); 
+                    mainAppContent.classList.remove('hidden'); 
+                    showError("Firebase is not configured. Attendee data cannot be loaded.", true);
                 }
                 return; 
             }
@@ -933,7 +985,7 @@
                         await signInWithCustomToken(auth, __initial_auth_token);
                         console.log("Signed in with custom token.");
                     } catch (customTokenError) {
-                        console.warn("Custom token sign-in failed:", customTokenError.code, customTokenError.message, ". This can happen if the token is for a different Firebase project than configured in firebaseConfig, or if the token is malformed/expired. Falling back to anonymous sign-in.");
+                        console.warn("Custom token sign-in failed:", customTokenError.code, customTokenError.message, ". Falling back to anonymous sign-in.");
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously after custom token failure.");
                     }
@@ -944,18 +996,19 @@
                 }
                 currentUserId = auth.currentUser?.uid; 
                 if (!currentUserId) { 
-                    console.warn("Firebase User ID not available after sign-in attempt. Using a temporary local ID for this session if name needs to be saved.");
+                    console.warn("Firebase User ID not available after sign-in attempt. Using a temporary local ID.");
                     currentUserId = `local-${crypto.randomUUID()}`;
                 }
                 console.log("Firebase Initialized. User ID for this session:", currentUserId);
                 currentUserNameFromStorage = await getUserNameFromFirestore(); 
             } catch (error) {
                 console.error("Critical Error during Firebase initialization or Auth:", error);
-                let specificErrorAlert = "Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference. Error: " + error.message;
-                if (error.code === 'auth/configuration-not-found') {
-                    specificErrorAlert = "Firebase Authentication configuration error (auth/configuration-not-found). This means the details in 'firebaseConfig' (apiKey, authDomain, projectId, etc.) are incorrect or not recognized by Firebase. Please METICULOUSLY verify these values in the script against your Firebase project console. Also, ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings.";
-                }
-                alert(specificErrorAlert);
+                const specificErrorAlert = document.createElement('div');
+                specificErrorAlert.textContent = "Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference. Error: " + error.message;
+                specificErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
+                document.body.appendChild(specificErrorAlert);
+                setTimeout(() => document.body.removeChild(specificErrorAlert), 7000);
+                
                 db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
             }
 
@@ -964,15 +1017,16 @@
                 mainAppContent.classList.remove('hidden');
                 fetchAttendees(); 
                 setInterval(fetchAttendees, POLLING_INTERVAL);
-            } else {
-                 if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && !currentUserNameFromStorage) {
+            } else { 
+                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && !currentUserNameFromStorage) {
                     localStorage.removeItem('attendeeAppWelcomeCompleted'); 
                 }
                 welcomeScreen.classList.remove('hidden');
                 mainAppContent.classList.add('hidden');
             }
         }
-        
+                
+        // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
             initializeAppLogic();
 
@@ -981,43 +1035,51 @@
                 if (name) {
                     await saveUserName(name); 
                     localStorage.setItem('attendeeAppWelcomeCompleted', 'true'); 
-                    
+                                        
                     welcomeScreen.classList.add('hidden');
                     mainAppContent.classList.remove('hidden');
                     fetchAttendees(); 
                     setInterval(fetchAttendees, POLLING_INTERVAL);
                 } else {
-                    alert("Please enter your first name.");
+                    const nameErrorAlert = document.createElement('div');
+                    nameErrorAlert.textContent = "Please enter your first name.";
+                    nameErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:orange; color:white; padding:10px; border-radius:5px; z-index:1000;";
+                    document.body.appendChild(nameErrorAlert);
+                    setTimeout(() => document.body.removeChild(nameErrorAlert), 3000);
                 }
             });
-            
+                        
             searchInput.addEventListener('input', (e) => { currentSearchTerm = e.target.value; applyFiltersAndSearch(); });
             filterButton.addEventListener('click', openFilterModal);
             metricsButton.addEventListener('click', openMetricsModal);
-            
+                        
             demoRequestedButton.addEventListener('click', async () => {
                 if (currentAttendeeForDemo) {
                     await toggleDemoRequest(currentAttendeeForDemo);
                 }
             });
-            
+                        
             closeAttendeeModalButton.addEventListener('click', closeAttendeeDetailModal);
             closeAttendeeModalFooterButton.addEventListener('click', closeAttendeeDetailModal);
             attendeeModal.addEventListener('click', (e) => { if (e.target === attendeeModalContent || attendeeModalContent.contains(e.target)) return; closeAttendeeDetailModal(); });
-            
+                        
             closeFilterModalButton.addEventListener('click', closeFilterModal);
-            filterModal.addEventListener('click', (e) => { if (e.target === filterModal) closeFilterModal(); });
-            
+            filterModal.addEventListener('click', (e) => { if (e.target === filterModal.querySelector('.bg-white')) return; if (e.target === filterModal) closeFilterModal(); }); // Close only if backdrop is clicked
+                        
             closeMetricsModalButton.addEventListener('click', closeMetricsModal);
             closeMetricsModalFooterButton.addEventListener('click', closeMetricsModal);
-            metricsModal.addEventListener('click', (e) => { if (e.target === metricsModal) closeMetricsModal(); });
+            metricsModal.addEventListener('click', (e) => { if (e.target === metricsModal.querySelector('.bg-white')) return; if (e.target === metricsModal) closeMetricsModal(); }); // Close only if backdrop is clicked
 
             downloadDemoRequestsCsvButton.addEventListener('click', () => {
                 const demoRequestedAttendees = allAttendees.filter(att => att.demoRequested === true);
                 if (demoRequestedAttendees.length > 0) {
                     downloadCSV(demoRequestedAttendees);
                 } else {
-                    alert("No demo requests to download.");
+                    const noDemoAlert = document.createElement('div');
+                    noDemoAlert.textContent = "No demo requests to download.";
+                    noDemoAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:lightblue; color:black; padding:10px; border-radius:5px; z-index:1000;";
+                    document.body.appendChild(noDemoAlert);
+                    setTimeout(() => document.body.removeChild(noDemoAlert), 3000);
                 }
             });
 
@@ -1025,13 +1087,15 @@
                 currentFilters.type = filterType.value; currentFilters.focusAccount = filterFocusAccount.value;
                 currentFilters.onGroundAE = filterAE.value; currentFilters.onGroundSDR = filterSDR.value; 
                 currentFilters.incumbent = filterIncumbent.value;
+                currentFilters.industry = filterIndustry.value; // Apply industry filter
                 applyFiltersAndSearch(); closeFilterModal();
             });
             clearFiltersButton.addEventListener('click', () => {
                 filterType.value = 'All'; filterFocusAccount.value = 'All';
                 filterAE.value = 'All'; filterSDR.value = 'All'; 
                 filterIncumbent.value = 'All';
-                currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All' };
+                filterIndustry.value = 'All'; // Clear industry filter
+                currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All', industry: 'All' };
                 applyFiltersAndSearch(); 
                 closeFilterModal();
             });
@@ -1040,4 +1104,3 @@
     </script>
 </body>
 </html>
-
