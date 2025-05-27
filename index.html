@@ -218,6 +218,12 @@
                          <select id="filterSDR" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="All">All SDRs</option></select>
                     </div>
+                    <div>
+                        <label for="filterIncumbent" class="block text-sm font-medium text-gray-700 mb-1">Incumbent</label>
+                        <select id="filterIncumbent" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="All">All Incumbents</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
                     <button id="clearFiltersButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">Clear Filters</button>
@@ -250,9 +256,15 @@
                             <canvas id="aeChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Type</h4>
-                        <canvas id="attendeeTypeChart"></canvas>
+                     <div class="flex flex-col md:flex-row md:space-x-4 space-y-6 md:space-y-0 side-by-side-charts mt-6">
+                        <div class="md:w-1/2 chart-container">
+                            <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Type</h4>
+                            <canvas id="attendeeTypeChart"></canvas>
+                        </div>
+                        <div class="md:w-1/2 chart-container">
+                            <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Incumbent Vendor</h4>
+                            <canvas id="incumbentChart"></canvas>
+                        </div>
                     </div>
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <h4 class="text-lg font-semibold text-gray-700 mb-3">Attendees Requesting Demo</h4>
@@ -322,6 +334,7 @@
         const filterFocusAccount = document.getElementById('filterFocusAccount');
         const filterAE = document.getElementById('filterAE'); 
         const filterSDR = document.getElementById('filterSDR'); 
+        const filterIncumbent = document.getElementById('filterIncumbent'); // New filter element
 
         const metricsModal = document.getElementById('metricsModal');
         const closeMetricsModalButton = document.getElementById('closeMetricsModalButton');
@@ -330,6 +343,7 @@
         const sdrChartCanvas = document.getElementById('sdrChart');
         const aeChartCanvas = document.getElementById('aeChart');
         const attendeeTypeChartCanvas = document.getElementById('attendeeTypeChart');
+        const incumbentChartCanvas = document.getElementById('incumbentChart'); // New chart canvas
         const demoRequestsTableBody = document.getElementById('demoRequestsTableBody');
         const noDemoRequestsMessage = document.getElementById('noDemoRequestsMessage');
         const downloadDemoRequestsCsvButton = document.getElementById('downloadDemoRequestsCsvButton');
@@ -342,7 +356,7 @@
         const attendeesTableContainer = document.getElementById('attendeesTableContainer');
 
         let allAttendees = [];
-        let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All' };
+        let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All' };
         let currentSearchTerm = '';
         let currentAttendeeForDemo = null;
         let currentUserNameFromStorage = '';
@@ -351,6 +365,7 @@
         let sdrChartInstance = null;
         let aeChartInstance = null;
         let attendeeTypeChartInstance = null;
+        let incumbentChartInstance = null; // New chart instance
 
         let db;
         let auth;
@@ -373,7 +388,7 @@
             'First Name': 'firstName', 'Last Name': 'lastName', 'Email': 'email', 'Phone': 'phone',
             'Company': 'company', 'Job Title': 'jobTitle', 'Type': 'type', 
             'Focus Account': 'focusAccount', 'On-ground AE': 'onGroundAE', 'On-ground SDR': 'onGroundSDR',
-            'Notes': 'notes'
+            'Notes': 'notes', 'Incumbent': 'incumbent' // Added Incumbent mapping
         };
         const expectedHeaders = Object.keys(headerMapping);
 
@@ -425,7 +440,7 @@
             const rawHeaders = parseCSVLine(lines[0]); const data = [];
             const actualHeaders = rawHeaders.map(h => h.trim());
             
-            const coreExpectedHeaders = Object.keys(headerMapping).filter(h => h !== 'Demo Requested' && h !== 'Demo Requested By');
+            const coreExpectedHeaders = Object.keys(headerMapping);
             const missingCoreHeaders = coreExpectedHeaders.filter(eh => !actualHeaders.includes(eh)); 
             if (missingCoreHeaders.length > 0) {
                  console.warn('Core CSV headers missing/mismatched. Expected:', missingCoreHeaders, 'Actual:', actualHeaders);
@@ -447,15 +462,18 @@
         }
         
         function populateFilterDropdowns(attendees) {
-            const uniqueAEs = new Set(); const uniqueSDRs = new Set();
+            const uniqueAEs = new Set(); const uniqueSDRs = new Set(); const uniqueIncumbents = new Set();
             attendees.forEach(att => {
                 if (att.onGroundAE && att.onGroundAE.trim() !== '') uniqueAEs.add(att.onGroundAE.trim());
                 if (att.onGroundSDR && att.onGroundSDR.trim() !== '') uniqueSDRs.add(att.onGroundSDR.trim());
+                if (att.incumbent && att.incumbent.trim() !== '') uniqueIncumbents.add(att.incumbent.trim());
             });
             filterAE.innerHTML = '<option value="All">All AEs</option>'; 
             Array.from(uniqueAEs).sort().forEach(ae => { const opt = document.createElement('option'); opt.value = ae; opt.textContent = ae; filterAE.appendChild(opt); });
             filterSDR.innerHTML = '<option value="All">All SDRs</option>'; 
             Array.from(uniqueSDRs).sort().forEach(sdr => { const opt = document.createElement('option'); opt.value = sdr; opt.textContent = sdr; filterSDR.appendChild(opt); });
+            filterIncumbent.innerHTML = '<option value="All">All Incumbents</option>';
+            Array.from(uniqueIncumbents).sort().forEach(inc => { const opt = document.createElement('option'); opt.value = inc; opt.textContent = inc; filterIncumbent.appendChild(opt); });
         }
         
         function sanitizeForFirestoreId(id) {
@@ -469,7 +487,6 @@
                 const response = await fetch(GOOGLE_SHEET_CSV_URL + `&t=${new Date().getTime()}`); 
                 if (!response.ok) {
                     let errMsg = `HTTP error! Status: ${response.status}.`;
-                    // ... (error handling for fetch status)
                     throw new Error(errMsg);
                 }
                 const csvText = await response.text();
@@ -480,7 +497,7 @@
                     let demoRequestedBy = '';
                     if (db && currentUserId && attendee.email) {
                         const safeEmailId = sanitizeForFirestoreId(attendee.email);
-                        const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); // Updated path
+                        const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId);
                         try {
                             const docSnap = await getDoc(demoStatusRef);
                             if (docSnap.exists()) {
@@ -590,23 +607,24 @@
             modalBody.innerHTML = ''; 
             const fullName = `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim();
             const createDetailRow = (label, value, type = 'text') => {
-                if (value && value.trim() !== '') { 
+                if (value && String(value).trim() !== '') { // Ensure value is treated as string for trim
                     const div = document.createElement('div'); div.className = 'grid grid-cols-3 gap-2 items-center';
                     const lbl = document.createElement('p'); lbl.className = 'text-sm font-medium text-gray-500 col-span-1 break-words'; lbl.textContent = label + ':'; div.appendChild(lbl);
                     const valCont = document.createElement('div'); valCont.className = 'text-sm text-gray-900 col-span-2 break-words flex items-center';
-                    if (type === 'tel' && value) { const a = document.createElement('a'); a.href = `tel:${value.replace(/\s+/g, '')}`; a.textContent = value; a.className = 'text-blue-600 hover:text-blue-800 hover:underline'; valCont.appendChild(a); } 
+                    if (type === 'tel' && value) { const a = document.createElement('a'); a.href = `tel:${String(value).replace(/\s+/g, '')}`; a.textContent = value; a.className = 'text-blue-600 hover:text-blue-800 hover:underline'; valCont.appendChild(a); } 
                     else if (type === 'email' && value) {
                         const emSpan = document.createElement('span'); emSpan.textContent = value; emSpan.className = 'text-blue-600 hover:text-blue-800 hover:underline cursor-pointer';
                         const fbSpan = document.createElement('span'); fbSpan.className = 'copy-feedback';
                         emSpan.addEventListener('click', () => copyToClipboard(value, fbSpan));
                         valCont.appendChild(emSpan); valCont.appendChild(fbSpan);
-                    } else { const p = document.createElement('p'); p.innerHTML = value.replace(/\n/g, '<br>'); valCont.appendChild(p); } 
+                    } else { const p = document.createElement('p'); p.innerHTML = String(value).replace(/\n/g, '<br>'); valCont.appendChild(p); } 
                     div.appendChild(valCont); modalBody.appendChild(div);
                 }
             };
             createDetailRow('Full Name', fullName); createDetailRow('Email', attendee.email, 'email'); createDetailRow('Phone', attendee.phone, 'tel');
             createDetailRow('Company', attendee.company); createDetailRow('Job Title', attendee.jobTitle); createDetailRow('Type', attendee.type);
             createDetailRow('Focus Account', attendee.focusAccount); createDetailRow('On-ground AE', attendee.onGroundAE); createDetailRow('On-ground SDR', attendee.onGroundSDR);
+            createDetailRow('Incumbent', attendee.incumbent); // Display Incumbent
             createDetailRow('Notes', attendee.notes);
             
             updateDemoRequestedButtonUI(attendee.demoRequested === true);
@@ -621,6 +639,7 @@
         function openFilterModal() {
             filterType.value = currentFilters.type; filterFocusAccount.value = currentFilters.focusAccount;
             filterAE.value = currentFilters.onGroundAE; filterSDR.value = currentFilters.onGroundSDR; 
+            filterIncumbent.value = currentFilters.incumbent;
             filterModal.classList.remove('hidden');
         }
         function closeFilterModal() { filterModal.classList.add('hidden'); }
@@ -632,17 +651,20 @@
 
         function openMetricsModal() {
             totalAttendeesCountEl.textContent = allAttendees.length; 
-            const sdrCounts = {}; const aeCounts = {};
-            const typeCounts = { 'Prospect': 0, 'Partner': 0, 'Customer': 0 };
+            const sdrCounts = {}; const aeCounts = {}; const typeCounts = { 'Prospect': 0, 'Partner': 0, 'Customer': 0 };
+            const incumbentCounts = {};
             const demoRequestedAttendees = [];
 
             allAttendees.forEach(attendee => {
                 const sdr = attendee.onGroundSDR?.trim();
                 const ae = attendee.onGroundAE?.trim();
                 const type = attendee.type?.trim();
+                const incumbent = attendee.incumbent?.trim();
+
                 if (sdr) sdrCounts[sdr] = (sdrCounts[sdr] || 0) + 1;
                 if (ae) aeCounts[ae] = (aeCounts[ae] || 0) + 1;
                 if (type && typeCounts.hasOwnProperty(type)) typeCounts[type]++;
+                if (incumbent) incumbentCounts[incumbent] = (incumbentCounts[incumbent] || 0) + 1;
                 if (attendee.demoRequested === true) { 
                     demoRequestedAttendees.push(attendee);
                 }
@@ -670,6 +692,10 @@
             
             const attendeeTypeChartData = { labels: Object.keys(typeCounts), datasets: [{ label: 'Attendees by Type', data: Object.values(typeCounts), backgroundColor: ['#0abd57', '#17494c', '#000000'], borderColor: ['#0abd57', '#17494c', '#000000'], borderWidth: 1 }] };
             attendeeTypeChartInstance = createOrUpdateChart(attendeeTypeChartInstance, attendeeTypeChartCanvas, 'bar', attendeeTypeChartData, chartOptions);
+
+            const incumbentChartData = { labels: Object.keys(incumbentCounts), datasets: [{ label: 'Attendees by Incumbent', data: Object.values(incumbentCounts), backgroundColor: '#FF8C00', borderColor: '#FF8C00', borderWidth: 1 }] }; // Example: DarkOrange
+            incumbentChartInstance = createOrUpdateChart(incumbentChartInstance, incumbentChartCanvas, 'bar', incumbentChartData, chartOptions);
+
 
             demoRequestsTableBody.innerHTML = '';
             if (demoRequestedAttendees.length > 0) {
@@ -699,7 +725,8 @@
                 (currentFilters.type === 'All' || (att.type && att.type.toLowerCase() === currentFilters.type.toLowerCase())) &&
                 (currentFilters.focusAccount === 'All' || (att.focusAccount && att.focusAccount.toLowerCase() === currentFilters.focusAccount.toLowerCase())) &&
                 (currentFilters.onGroundAE === 'All' || (att.onGroundAE && att.onGroundAE === currentFilters.onGroundAE)) && 
-                (currentFilters.onGroundSDR === 'All' || (att.onGroundSDR && att.onGroundSDR === currentFilters.onGroundSDR))   
+                (currentFilters.onGroundSDR === 'All' || (att.onGroundSDR && att.onGroundSDR === currentFilters.onGroundSDR)) &&
+                (currentFilters.incumbent === 'All' || (att.incumbent && att.incumbent === currentFilters.incumbent))   
             );
             if (currentSearchTerm) {
                 const searchTermLower = currentSearchTerm.toLowerCase();
@@ -709,7 +736,7 @@
                     ((att.jobTitle || '').toLowerCase().includes(searchTermLower))
                 );
             }
-            // Sort by check-in time (reverse order of how they appear in the sheet)
+             // Sort by check-in time (reverse order of how they appear in the sheet)
             filtered.reverse(); 
 
             if (!loadingSpinner.classList.contains('hidden') || !errorMessage.classList.contains('hidden')) {} 
@@ -762,7 +789,7 @@
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
-            const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); // Use public path
+            const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); 
             
             const newDemoStatus = !(attendee.demoRequested === true); 
 
@@ -771,7 +798,7 @@
                     await setDoc(demoStatusRef, { 
                         requested: true, 
                         requestedBy: currentUserNameFromStorage || "Unknown User",
-                        requestedByUserId: currentUserId, // Store the ID of the user who made the request
+                        requestedByUserId: currentUserId, 
                         timestamp: new Date().toISOString() 
                     });
                 } else {
@@ -997,12 +1024,14 @@
             applyFiltersButton.addEventListener('click', () => {
                 currentFilters.type = filterType.value; currentFilters.focusAccount = filterFocusAccount.value;
                 currentFilters.onGroundAE = filterAE.value; currentFilters.onGroundSDR = filterSDR.value; 
+                currentFilters.incumbent = filterIncumbent.value;
                 applyFiltersAndSearch(); closeFilterModal();
             });
             clearFiltersButton.addEventListener('click', () => {
                 filterType.value = 'All'; filterFocusAccount.value = 'All';
                 filterAE.value = 'All'; filterSDR.value = 'All'; 
-                currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All' };
+                filterIncumbent.value = 'All';
+                currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All', incumbent: 'All' };
                 applyFiltersAndSearch(); 
                 closeFilterModal();
             });
