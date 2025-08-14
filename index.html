@@ -8,111 +8,144 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Custom scrollbar for better aesthetics if needed */
-        ::-webkit-scrollbar {
-            width: 8px;
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
+        .sticky-header th { position: sticky; top: 0; background-color: #f9fafb; z-index: 10; }
+        .no-select { -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        img { max-width: 100%; height: auto; }
+        .copy-feedback { font-size: 0.75rem; color: #10B981; margin-left: 8px; display: inline-block; }
+        .chart-container { position: relative; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; height: 300px; max-height: 350px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .side-by-side-charts .chart-container { max-width: 100%; }
+        .demo-requested-active { background-color: #cffde3 !important; }
+        .demo-requested-row-active { background-color: #cffde3; }
+        .demo-requested-row-active:hover { background-color: #b6f7d0 !important; }
+        .attendee-count-text { color: #16484d; }
+        .info-icon { cursor: help; color: #60a5fa; /* blue-400 */ margin-left: 4px; }
+        .tooltip { visibility: hidden; width: 220px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 100; bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.4; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent; }
+        .info-icon-container:hover .tooltip { visibility: visible; opacity: 1; }
+        .grid-tile { background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; display: flex; flex-direction: column; justify-content: space-between; height: 100%;}
+        .grid-tile:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+        .grid-tile img { max-height: 100px; object-fit: contain; margin-bottom: 0.5rem; margin-left: auto; margin-right: auto;}
+        /* Notification Toast Styling */
+        #notificationToast {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            z-index: 200;
+            transition: top 0.5s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+        #notificationToast.show {
+            top: 20px;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
+        .bg-success { background-color: #10B981; } /* green-500 */
+        .bg-error { background-color: #EF4444; } /* red-500 */
+        .bg-info { background-color: #3B82F6; } /* blue-500 */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        /* Basic styling for modal backdrop */
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-        /* Ensure table headers are sticky if table scrolls */
-        .sticky-header th {
-            position: sticky;
-            top: 0;
-            background-color: #f9fafb; /* Tailwind gray-50 */
-            z-index: 10;
-        }
-        /* Prevent text selection on click for better UX on interactive elements */
-        .no-select {
-          -webkit-touch-callout: none; /* iOS Safari */
-            -webkit-user-select: none; /* Safari */
-             -khtml-user-select: none; /* Konqueror HTML */
-               -moz-user-select: none; /* Old versions of Firefox */
-                -ms-user-select: none; /* Internet Explorer/Edge */
-                    user-select: none; /* Non-prefixed version, currently
-                                          supported by Chrome, Edge, Opera and Firefox */
-        }
-        /* Ensure images don't overflow their containers */
-        img {
-            max-width: 100%;
-            height: auto;
-        }
-        .copy-feedback {
-            font-size: 0.75rem; /* text-xs */
-            color: #10B981; /* green-600 */
-            margin-left: 8px; /* ml-2 */
-            display: inline-block;
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 500px; /* Adjust as needed */
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px; /* Base height */
-            max-height: 350px; /* Max height */
-        }
-        @media (min-width: 768px) { /* md breakpoint */
-            .chart-container {
-                height: 350px;
-            }
-        }
-        .side-by-side-charts .chart-container {
-             max-width: 100%; /* Allow them to fill their flex item */
-        }
-        .demo-requested-active {
-            background-color: #cffde3 !important;
-        }
-        .demo-requested-row-active {
-            background-color: #cffde3;
-        }
-        .demo-requested-row-active:hover {
-            background-color: #b6f7d0 !important; /* Slightly darker green on hover */
-        }
-        /* Custom style for attendee count text - color changed to match Metrics button */
-        .attendee-count-text {
-            color: #16484d; 
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
+    <!-- Notification Toast -->
+    <div id="notificationToast"></div>
+
+    <!-- Welcome Screen / Initial Login -->
     <div id="welcomeScreen" class="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center p-8">
-        <p class="text-3xl md:text-4xl font-bold text-gray-700 mb-4">Welcome to</p>
-        <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png"
-              alt="Event Banner"
-              class="max-w-xs md:max-w-md h-auto mx-auto rounded-lg mb-8"
-              onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
-        <div class="w-full max-w-sm">
-            <label for="userNameInput" class="block text-sm font-medium text-gray-700 mb-1">Please enter your first name:</label>
-            <input type="text" id="userNameInput" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4" placeholder="Your First Name">
-            <button id="enterAppButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">Enter</button>
+        <img src="https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" alt="Event Banner" class="max-w-xs md:max-w-md h-auto mx-auto rounded-lg mb-8" onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
+        <div id="initialLoginOptions" class="w-full max-w-sm">
+            <p class="text-3xl md:text-4xl font-bold text-gray-700 mb-4 text-center">Welcome</p>
+            <div id="userNamePrompt">
+                <label for="userNameInput" class="block text-sm font-medium text-gray-700 mb-1">Please enter your first name:</label>
+                <input type="text" id="userNameInput" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4" placeholder="Your First Name">
+                <button id="enterAppButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all mb-3">Enter</button>
+            </div>
+            <div id="returningUserOptions" class="hidden">
+                <p id="welcomeBackMessage" class="text-lg text-gray-700 mb-4 text-center"></p>
+                <button id="viewEventsButton" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all mb-3">View Events</button>
+            </div>
+            <button id="adminControlsLoginButton" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">Admin Controls</button>
         </div>
+    </div>
+
+    <!-- Admin Login Screen -->
+    <div id="adminLoginScreen" class="fixed inset-0 bg-gray-100 z-[90] flex flex-col items-center justify-center p-8 hidden">
+        <img src="https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" alt="Event Banner" class="max-w-xs md:max-w-sm h-auto mx-auto rounded-lg mb-8">
+        <h2 class="text-2xl font-bold text-gray-700 mb-6">Admin Login</h2>
+        <div class="w-full max-w-sm bg-white p-6 rounded-lg shadow-md">
+            <div class="mb-4">
+                <label for="adminUsername" class="block text-sm font-medium text-gray-700">Username</label>
+                <select id="adminUsername" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+            </div>
+            <div class="mb-6">
+                <label for="adminPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="adminPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button id="adminLoginSubmitButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Submit</button>
+            <button id="backToWelcomeFromAdminLoginButton" class="w-full mt-3 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Back</button>
+        </div>
+    </div>
+
+    <!-- Admin Controls Page -->
+    <div id="adminControlsScreen" class="container mx-auto p-4 md:p-8 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-700">Admin Controls</h1>
+            <button id="adminLogoutButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">Logout</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="addEventTile" class="grid-tile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-calendar-plus mx-auto mb-2 text-indigo-600" viewBox="0 0 16 16"><path d="M8 7a.5.5 0 0 1 .5.5V9H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V10H6a.5.5 0 0 1 0-1h1.5V7.5A.5.5 0 0 1 8 7z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>
+                <h3 class="text-xl font-semibold text-gray-800">Add Event</h3>
+                <p class="text-sm text-gray-600">Create a new event profile.</p>
+            </div>
+            <div id="manageEventsTile" class="grid-tile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-pencil-square mx-auto mb-2 text-indigo-600" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.636a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.813z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/></svg>
+                <h3 class="text-xl font-semibold text-gray-800">Manage Events</h3>
+                <p class="text-sm text-gray-600">View, edit, or delete existing events.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="eventSelectionScreen" class="container mx-auto p-4 md:p-8 hidden">
+         <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-700">Select an Event</h1>
+            <button id="userLogoutButton" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Change User</button>
+        </div>
+        <div id="eventTilesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+         <p id="noEventsToShowMessage" class="text-center text-gray-500 py-10 hidden">No events available at the moment. Please check back later.</p>
     </div>
 
     <div id="mainAppContent" class="container mx-auto p-4 md:p-8 hidden">
         <header class="mb-6 text-center">
-            <img src="https://info.moengage.com/hubfs/Growth%20Summit%20logo.png"
-                  alt="Event Banner"
-                  class="max-w-full h-auto mx-auto rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/800x200/cccccc/333333?text=Event+Banner+Not+Found';">
+            <img id="eventSpecificBanner" src="https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" alt="Event Banner" class="max-w-xs h-auto mx-auto rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/800x200/cccccc/333333?text=Event+Banner+Not+Found';">
         </header>
-
+        <button id="backToEventSelectionButton" class="mb-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">&larr; Back to Events</button>
         <main class="bg-white p-6 rounded-lg shadow-xl">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-700 mb-2 text-center">Checked-in Attendees</h1>
+            <h1 id="eventSpecificTitle" class="text-2xl md:text-3xl font-bold text-gray-700 mb-2 text-center">Event Name</h1>
             <div id="attendeeStatusDisplay" class="text-center mb-6 p-3 rounded-lg attendee-count-text">
                 <span id="eventStatusIndicator" class="inline-block w-3 h-3 rounded-full mr-2 hidden"></span>
                 <span id="homeScreenTotalAttendeesCount" class="text-2xl font-bold">0</span>
-                <span class="text-xl"> Attendees</span>
+                <span class="text-xl"> checked-in attendees</span>
             </div>
             
             <div class="flex flex-col space-y-4 mb-6">
@@ -174,6 +207,16 @@
                 </div>
                 <div id="modalBody" class="p-6 space-y-3 flex-grow overflow-y-auto">
                     </div>
+                <!-- Gemini Icebreaker Section -->
+                <div id="icebreakerSection" class="p-6 border-t border-gray-200 flex-shrink-0">
+                    <button id="generateIcebreakerButton" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center">
+                        Generate Icebreaker ✨
+                    </button>
+                    <div id="icebreakerResult" class="mt-4 p-3 bg-gray-100 rounded-lg text-sm text-gray-700 hidden"></div>
+                    <div id="icebreakerSpinner" class="mt-4 flex justify-center hidden">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
                      <button id="demoRequestedButton" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center">
                         <span id="demoRequestedButtonText">Demo Requested</span>
@@ -280,24 +323,174 @@
                 </div>
             </div>
         </div>
-    </div>
+
+        <div id="addEventModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+            <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-5 border-b border-gray-200 flex-shrink-0">
+                    <h3 class="text-xl font-semibold text-gray-800">Add New Event</h3>
+                    <button id="closeAddEventModalButton" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <form id="addEventForm" class="p-6 space-y-4 flex-grow overflow-y-auto">
+                    <div>
+                        <label for="eventName" class="block text-sm font-medium text-gray-700">Event Name 
+                            <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Add the public name of the event</span>
+                            </span>
+                        </label>
+                        <input type="text" id="eventName" name="eventName" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventCity" class="block text-sm font-medium text-gray-700">City
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Enter the city where the event is held.</span>
+                            </span>
+                        </label>
+                        <input type="text" id="eventCity" name="eventCity" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventDate" class="block text-sm font-medium text-gray-700">Event Date
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Select the date of the event.</span>
+                            </span>
+                        </label>
+                        <input type="date" id="eventDate" name="eventDate" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventStartTime" class="block text-sm font-medium text-gray-700">Event Start Time
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Add the same start time as on the LP.</span>
+                            </span>
+                        </label>
+                        <input type="time" id="eventStartTime" name="eventStartTime" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventEndTime" class="block text-sm font-medium text-gray-700">Event End Time
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Enter the end time of the event.</span>
+                            </span>
+                        </label>
+                        <input type="time" id="eventEndTime" name="eventEndTime" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventSheetUrl" class="block text-sm font-medium text-gray-700">Source Sheet URL
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Paste the URL you receive after File > Share > Publish to Web in your Google Sheet (CSV output).</span>
+                            </span>
+                        </label>
+                        <input type="url" id="eventSheetUrl" name="eventSheetUrl" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="eventBannerUrl" class="block text-sm font-medium text-gray-700">Event Banner Image URL
+                             <span class="info-icon-container inline-block relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                <span class="tooltip">Paste the public URL after uploading the transparent logo image on Hubspot.</span>
+                            </span>
+                        </label>
+                        <input type="url" id="eventBannerUrl" name="eventBannerUrl" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                </form>
+                <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
+                    <button id="submitAddEventButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">Submit Event</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="manageEventsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+            <div class="bg-white rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-5 border-b border-gray-200 flex-shrink-0">
+                    <h3 class="text-xl font-semibold text-gray-800">Manage Events</h3>
+                    <button id="closeManageEventsModalButton" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4 flex-grow overflow-y-auto">
+                    <div>
+                        <label for="manageEventDropdown" class="block text-sm font-medium text-gray-700 mb-1">Select Event to Manage</label>
+                        <select id="manageEventDropdown" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
+                    </div>
+                    <button id="deleteEventButton" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg mt-4">Delete Selected Event</button>
+                </div>
+                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
+                    <button id="doneManageEventsButton" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Done</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="customConfirmModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4 modal-backdrop hidden">
+            <div class="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6">
+                <h3 id="customConfirmTitle" class="text-lg font-semibold text-gray-800 mb-4">Confirm Action</h3>
+                <p id="customConfirmMessage" class="text-sm text-gray-600 mb-6">Are you sure?</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="customConfirmCancelButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancel</button>
+                    <button id="customConfirmOkButton" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">OK</button>
+                </div>
+            </div>
+        </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
         // Configuration
-        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv';
-        const POLLING_INTERVAL = 30000; // 30 seconds
+        let CURRENT_EVENT_GOOGLE_SHEET_URL = ''; 
+        const POLLING_INTERVAL = 30000; 
 
-        // DOM Elements
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        const mainAppContent = document.getElementById('mainAppContent');
+        // DOM Elements (Consolidated)
+        const screens = {
+            welcome: document.getElementById('welcomeScreen'),
+            adminLogin: document.getElementById('adminLoginScreen'),
+            adminControls: document.getElementById('adminControlsScreen'),
+            eventSelection: document.getElementById('eventSelectionScreen'),
+            mainApp: document.getElementById('mainAppContent')
+        };
+        const initialLoginOptions = document.getElementById('initialLoginOptions');
+        const userNamePrompt = document.getElementById('userNamePrompt');
+        const returningUserOptions = document.getElementById('returningUserOptions');
+        const welcomeBackMessage = document.getElementById('welcomeBackMessage');
+        const viewEventsButton = document.getElementById('viewEventsButton');
+        const adminControlsLoginButton = document.getElementById('adminControlsLoginButton');
+        const userLogoutButton = document.getElementById('userLogoutButton');
+        
+        const adminUsernameSelect = document.getElementById('adminUsername');
+        const adminPasswordInput = document.getElementById('adminPassword');
+        const adminLoginSubmitButton = document.getElementById('adminLoginSubmitButton');
+        const backToWelcomeFromAdminLoginButton = document.getElementById('backToWelcomeFromAdminLoginButton');
+
+        const addEventTile = document.getElementById('addEventTile');
+        const manageEventsTile = document.getElementById('manageEventsTile');
+        const adminLogoutButton = document.getElementById('adminLogoutButton');
+
+        const addEventModal = document.getElementById('addEventModal');
+        const addEventForm = document.getElementById('addEventForm');
+        const closeAddEventModalButton = document.getElementById('closeAddEventModalButton');
+        const submitAddEventButton = document.getElementById('submitAddEventButton');
+
+        const manageEventsModal = document.getElementById('manageEventsModal');
+        const closeManageEventsModalButton = document.getElementById('closeManageEventsModalButton');
+        const manageEventDropdown = document.getElementById('manageEventDropdown');
+        const deleteEventButton = document.getElementById('deleteEventButton');
+        const doneManageEventsButton = document.getElementById('doneManageEventsButton');
+
+        const eventTilesContainer = document.getElementById('eventTilesContainer');
+        const noEventsToShowMessage = document.getElementById('noEventsToShowMessage');
+        
+        const eventSpecificBanner = document.getElementById('eventSpecificBanner');
+        const eventSpecificTitle = document.getElementById('eventSpecificTitle');
+        const backToEventSelectionButton = document.getElementById('backToEventSelectionButton');
+
         const userNameInput = document.getElementById('userNameInput');
         const enterAppButton = document.getElementById('enterAppButton');
-
         const searchInput = document.getElementById('searchInput');
         const filterButton = document.getElementById('filterButton');
         const metricsButton = document.getElementById('metricsButton');
@@ -315,6 +508,10 @@
         const demoRequestedButton = document.getElementById('demoRequestedButton');
         const demoRequestedButtonText = document.getElementById('demoRequestedButtonText');
         const demoRequestedCheckmark = document.getElementById('demoRequestedCheckmark');
+
+        const generateIcebreakerButton = document.getElementById('generateIcebreakerButton');
+        const icebreakerResult = document.getElementById('icebreakerResult');
+        const icebreakerSpinner = document.getElementById('icebreakerSpinner');
 
         const filterModal = document.getElementById('filterModal');
         const closeFilterModalButton = document.getElementById('closeFilterModalButton');
@@ -343,12 +540,25 @@
         const retryFetchButton = document.getElementById('retryFetchButton');
         const attendeesTableContainer = document.getElementById('attendeesTableContainer');
 
+        const customConfirmModal = document.getElementById('customConfirmModal');
+        const customConfirmTitle = document.getElementById('customConfirmTitle');
+        const customConfirmMessage = document.getElementById('customConfirmMessage');
+        const customConfirmOkButton = document.getElementById('customConfirmOkButton');
+        const customConfirmCancelButton = document.getElementById('customConfirmCancelButton');
+        let confirmCallback = null;
+        const notificationToast = document.getElementById('notificationToast');
+
+
         // Global State
         let allAttendees = [];
         let currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All' }; 
         let currentSearchTerm = '';
         let currentAttendeeForDemo = null;
         let currentUserNameFromStorage = '';
+        let currentSelectedEventId = null;
+        let currentSelectedEventData = null; 
+        let pollingTimeoutId = null;
+
 
         let sdrChartInstance = null;
         let aeChartInstance = null;
@@ -382,6 +592,55 @@
         };
         const expectedHeaders = Object.keys(headerMapping);
 
+        const adminUsers = {
+            "Venkat": "venkata24", "Shitij": "shitija25", "Sandeep": "sandeepa23", 
+            "Priya": "priyaa26", "Sravan": "sravana27", "Ashik": "ashika28", "Rohit": "rohita29", "Arti": "artia30"
+        };
+
+        // --- Screen Management ---
+        function showScreen(screenId) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            [addEventModal, manageEventsModal, attendeeModal, filterModal, metricsModal, customConfirmModal].forEach(modal => modal.classList.add('hidden'));
+            screens[screenId].classList.remove('hidden');
+        }
+        
+        // --- Custom Confirm Modal ---
+        function showCustomConfirm(title, message, callback) {
+            customConfirmTitle.textContent = title;
+            customConfirmMessage.textContent = message;
+            confirmCallback = callback;
+            customConfirmModal.classList.remove('hidden');
+        }
+        customConfirmOkButton.addEventListener('click', () => {
+            if (confirmCallback) confirmCallback(true);
+            customConfirmModal.classList.add('hidden');
+        });
+        customConfirmCancelButton.addEventListener('click', () => {
+            if (confirmCallback) confirmCallback(false);
+            customConfirmModal.classList.add('hidden');
+        });
+        customConfirmModal.addEventListener('click', (e) => { 
+            if (e.target === customConfirmModal) {
+                if (confirmCallback) confirmCallback(false);
+                customConfirmModal.classList.add('hidden');
+            }
+        });
+        
+        // --- Notification System ---
+        function showNotification(message, type = 'info') { // types: 'success', 'error', 'info'
+            notificationToast.textContent = message;
+            notificationToast.className = ''; // Clear existing classes
+            notificationToast.classList.add('show');
+            if (type === 'success') notificationToast.classList.add('bg-success');
+            else if (type === 'error') notificationToast.classList.add('bg-error');
+            else notificationToast.classList.add('bg-info');
+            
+            setTimeout(() => {
+                notificationToast.classList.remove('show');
+            }, 3000);
+        }
+
+
         // Chart.js Custom Plugin for Data Labels
         Chart.register({
             id: 'customDataLabelsOnTop',
@@ -410,47 +669,72 @@
             }
         });
 
-        // CSV Parsing Functions
-        function parseCSVLine(line) {
-            const result = []; let current = ''; let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"' && (i === 0 || line[i-1] !== '\\')) { 
-                     if (inQuotes && i + 1 < line.length && line[i+1] === '"') { current += '"'; i++; } 
-                     else { inQuotes = !inQuotes; }
-                } else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; } 
-                 else { current += char; }
-            }
-            result.push(current.trim());
-            return result.map(value => value.replace(/^"|"$/g, '').replace(/""/g, '"'));
-        }
-
+        // CSV Parsing Functions (Revised for better newline handling)
         function parseCSV(csvText) {
-            const lines = csvText.trim().split(/\r?\n/); 
-            if (lines.length === 0) return [];
-            const rawHeaders = parseCSVLine(lines[0]); const data = [];
-            const actualHeaders = rawHeaders.map(h => h.trim());
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let inQuotes = false;
+            csvText = csvText.trim();
+
+            for (let i = 0; i < csvText.length; i++) {
+                const char = csvText[i];
+
+                if (char === '"') {
+                    if (inQuotes && i + 1 < csvText.length && csvText[i+1] === '"') {
+                        currentField += '"'; i++; 
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    currentRow.push(currentField); 
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (csvText[i+1] === '\n' && char === '\r') { i++; }
+                    currentRow.push(currentField);
+                    rows.push(currentRow.map(f => f.trim())); 
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            currentRow.push(currentField); 
+            if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0].trim() !== '')) { 
+                 rows.push(currentRow.map(f => f.trim())); 
+            }
             
+            if (rows.length === 0) return [];
+
+            const rawHeaders = rows[0];
+            const data = [];
+            const actualHeaders = rawHeaders.map(h => String(h).trim());
+
+
             const coreExpectedHeaders = Object.keys(headerMapping);
-            const missingCoreHeaders = coreExpectedHeaders.filter(eh => !actualHeaders.includes(eh)); 
+            const missingCoreHeaders = coreExpectedHeaders.filter(eh => !actualHeaders.includes(eh));
             if (missingCoreHeaders.length > 0) {
-                 console.warn('Core CSV headers missing/mismatched. Expected:', missingCoreHeaders, 'Actual:', actualHeaders);
+                console.warn('Core CSV headers missing/mismatched. Expected:', missingCoreHeaders, 'Actual:', actualHeaders);
             }
 
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim() === '') continue; 
-                const values = parseCSVLine(lines[i]); const entry = {}; let isEmptyRow = true; 
+            for (let i = 1; i < rows.length; i++) {
+                const values = rows[i];
+                const entry = {};
+                let isEmptyRow = true;
                 const numVals = Math.min(values.length, actualHeaders.length);
-                for(let j = 0; j < numVals; j++) {
-                    const header = actualHeaders[j];
-                    const mappedKey = headerMapping[header.trim()] || header.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''); 
-                    entry[mappedKey] = values[j] || '';
-                    if (values[j] && values[j].trim() !== '') isEmptyRow = false;
+                for (let j = 0; j < numVals; j++) {
+                    const header = actualHeaders[j]; 
+                    const mappedKey = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                    entry[mappedKey] = values[j] || ''; 
+                    if (values[j] && String(values[j]).trim() !== '') isEmptyRow = false;
                 }
-                if (!isEmptyRow) data.push(entry);
+                if (!isEmptyRow || Object.keys(entry).some(k => entry[k])) { 
+                     data.push(entry);
+                }
             }
             return data;
         }
+
 
         // Populate Filter Dropdowns
         function populateFilterDropdowns(attendees) {
@@ -473,13 +757,28 @@
         
         // Update Event Status Indicator
         function updateEventStatusIndicator() {
+            if (!currentSelectedEventData || !currentSelectedEventData.eventDate || !currentSelectedEventData.eventStartTime || !currentSelectedEventData.eventEndTime) {
+                eventStatusIndicator.classList.add('hidden');
+                return;
+            }
             const now = new Date();
-            const eventStartDate = new Date('2025-05-28T09:30:00');
-            const eventEndDate = new Date('2025-05-28T22:00:00');
+            const eventStartDateTimeStr = `${currentSelectedEventData.eventDate}T${currentSelectedEventData.eventStartTime}:00`;
+            const eventEndDateTimeStr = `${currentSelectedEventData.eventDate}T${currentSelectedEventData.eventEndTime}:00`;
+            
+            let eventStartDate, eventEndDate;
+            try {
+                eventStartDate = new Date(eventStartDateTimeStr);
+                eventEndDate = new Date(eventEndDateTimeStr);
+                if (isNaN(eventStartDate.getTime()) || isNaN(eventEndDate.getTime())) {
+                    throw new Error("Invalid date/time format for event.");
+                }
+            } catch (e) {
+                console.error("Error parsing event date/time:", e, currentSelectedEventData);
+                eventStatusIndicator.classList.add('hidden');
+                return;
+            }
 
-            attendeeStatusDisplay.style.backgroundColor = ''; // Ensure no background on the main div
-            // The text color is set by the .attendee-count-text class in <style>
-
+            attendeeStatusDisplay.style.backgroundColor = ''; 
             eventStatusIndicator.classList.add('hidden'); 
 
             if (now < eventStartDate) {
@@ -494,9 +793,14 @@
 
         // Fetch Attendees Data
         async function fetchAttendees() {
+            if (!CURRENT_EVENT_GOOGLE_SHEET_URL) {
+                console.warn("No event selected or source sheet URL is missing.");
+                showError(true, "No event selected or data source missing.");
+                return;
+            }
             showLoading(true); showError(false); let fetchSucceeded = false;
             try {
-                const response = await fetch(GOOGLE_SHEET_CSV_URL + `&t=${new Date().getTime()}`); 
+                const response = await fetch(CURRENT_EVENT_GOOGLE_SHEET_URL + `&t=${new Date().getTime()}`); 
                 if (!response.ok) {
                     let errMsg = `HTTP error! Status: ${response.status}.`;
                     throw new Error(errMsg);
@@ -507,9 +811,9 @@
                 const attendeesWithDemoStatus = await Promise.all(parsedAtt.map(async (attendee) => {
                     let demoRequested = false;
                     let demoRequestedBy = '';
-                    if (db && currentUserId && attendee.email) {
+                    if (db && currentUserId && attendee.email && currentSelectedEventId) {
                         const safeEmailId = sanitizeForFirestoreId(attendee.email);
-                        const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId);
+                        const demoStatusRef = doc(db, "artifacts", appId, "public/data/eventDemoStatus", currentSelectedEventId, "attendees", safeEmailId);
                         try {
                             const docSnap = await getDoc(demoStatusRef);
                             if (docSnap.exists()) {
@@ -536,7 +840,7 @@
                 if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
                     userFriendlyMessage = 'Failed to fetch attendee data. This could be a network issue, or the Google Sheet URL might be temporarily inaccessible or blocked. Please check your internet connection and ensure the Google Sheet is correctly published and publicly accessible via its CSV link. Try refreshing the page.';
                 }
-                showError(userFriendlyMessage);
+                showError(true, userFriendlyMessage);
             } finally {
                  showLoading(false); 
                  if (fetchSucceeded) {
@@ -622,6 +926,8 @@
         function openAttendeeDetailModal(attendee) {
             currentAttendeeForDemo = attendee; 
             modalBody.innerHTML = ''; 
+            icebreakerResult.textContent = '';
+            icebreakerResult.classList.add('hidden');
             const fullName = `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim();
             
             const createDetailRow = (label, value, type = 'text', isLink = false, linkTarget = '_blank') => {
@@ -730,7 +1036,7 @@
                     y: { 
                         display: false, 
                         beginAtZero: true,
-                        grace: '10%' // Add 10% padding to the top of y-axis
+                        grace: '10%' 
                     },
                     x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } }
                 }, 
@@ -795,9 +1101,10 @@
             else { attendeesTableContainer.classList.remove('hidden'); renderTable(filtered); }
         }
 
-        // User Name Persistence (Firestore)
+        // User Name Persistence (Firestore & localStorage)
         async function saveUserName(name) {
             currentUserNameFromStorage = name; 
+            localStorage.setItem('attendeeAppUserName', name); 
             if (!db || !currentUserId) {
                 console.warn("Firestore not initialized or user ID not available for saving name. Name not saved to cloud.");
                 return;
@@ -811,7 +1118,10 @@
             }
         }
                 
-        async function getUserNameFromFirestore() {
+        async function getUserNameFromFirestoreOrLocalStorage() {
+            let name = localStorage.getItem('attendeeAppUserName');
+            if (name) return name;
+
             if (!db || !currentUserId) {
                 console.warn("Firestore not initialized or user ID not available for getting name.");
                 return null;
@@ -820,7 +1130,9 @@
             try {
                 const docSnap = await getDoc(userDocRef);
                 if (docSnap.exists()) {
-                    return docSnap.data().firstName;
+                    name = docSnap.data().firstName;
+                    if (name) localStorage.setItem('attendeeAppUserName', name); 
+                    return name;
                 }
                 return null;
             } catch (error) {
@@ -831,23 +1143,13 @@
 
         // Demo Request Logic (Firestore)
         async function toggleDemoRequest(attendee) {
-            if (!db || !currentUserId || !attendee || !attendee.email) {
-                console.error(
-                    "toggleDemoRequest PRE-CONDITION FAILED:", 
-                    "\n  Firestore (db) ready:", !!db,
-                    "\n  Current User ID (currentUserId):", currentUserId,
-                    "\n  Attendee object present (attendee):", !!attendee,
-                    "\n  Attendee email (attendee?.email):", attendee?.email
-                );
-                const customAlert = document.createElement('div');
-                customAlert.textContent = "Could not update demo request status. Firestore/Auth not ready or attendee email is missing. Please try again or check console for details. Ensure Firebase is correctly configured in your environment if self-hosting.";
-                customAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
-                document.body.appendChild(customAlert);
-                setTimeout(() => document.body.removeChild(customAlert), 5000);
+            if (!db || !currentUserId || !attendee || !attendee.email || !currentSelectedEventId) {
+                console.error("toggleDemoRequest PRE-CONDITION FAILED (Event ID missing or other):", currentSelectedEventId);
+                showNotification("Could not update demo request. Critical information missing.", "error");
                 return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
-            const demoStatusRef = doc(db, "artifacts", appId, "public/data/globalAttendeeDemoStatus", safeEmailId); 
+            const demoStatusRef = doc(db, "artifacts", appId, "public/data/eventDemoStatus", currentSelectedEventId, "attendees", safeEmailId); 
             const newDemoStatus = !(attendee.demoRequested === true); 
 
             try {
@@ -872,7 +1174,7 @@
                 }
                                 
                 updateDemoRequestedButtonUI(newDemoStatus);
-                console.log(`Demo request for ${attendee.email} set to ${newDemoStatus} by ${currentUserNameFromStorage}`);
+                console.log(`Demo request for ${attendee.email} (Event: ${currentSelectedEventId}) set to ${newDemoStatus} by ${currentUserNameFromStorage}`);
                                 
                 applyFiltersAndSearch(); 
                 if (!metricsModal.classList.contains('hidden')) {
@@ -881,11 +1183,7 @@
 
             } catch (error) {
                 console.error("Error updating demo request status in Firestore:", error);
-                const customErrorAlert = document.createElement('div');
-                customErrorAlert.textContent = `Failed to update demo request status: ${error.message}. Please check console for more details and ensure Firebase is correctly set up (especially Firestore rules).`;
-                customErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
-                document.body.appendChild(customErrorAlert);
-                setTimeout(() => document.body.removeChild(customErrorAlert), 5000);
+                showNotification(`Failed to update demo request status: ${error.message}.`, "error");
             }
         }
 
@@ -923,41 +1221,194 @@
                 document.body.removeChild(link);
             }
         }
+
+        // --- Event Management Functions ---
+        async function saveEventProfile(eventData) {
+            if (!db) { console.error("Firestore not initialized."); return false; }
+            const eventId = sanitizeForFirestoreId(eventData.eventName.toLowerCase().replace(/\s+/g, '-')) + '-' + Date.now(); 
+            const eventRef = doc(db, "artifacts", appId, "public/data/eventProfiles", eventId);
+            try {
+                await setDoc(eventRef, { ...eventData, id: eventId, createdAt: new Date().toISOString() });
+                console.log("Event profile saved:", eventId);
+                return true;
+            } catch (error) {
+                console.error("Error saving event profile:", error);
+                return false;
+            }
+        }
+
+        async function fetchEventProfiles() {
+            if (!db) { console.error("Firestore not initialized."); return []; }
+            const eventsCol = collection(db, "artifacts", appId, "public/data/eventProfiles");
+            try {
+                const snapshot = await getDocs(eventsCol);
+                const events = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                return events.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)); 
+            } catch (error) {
+                console.error("Error fetching event profiles:", error);
+                return [];
+            }
+        }
         
-        // App Initialization
-        async function initializeAppLogic() {
-            let configIsInvalid = false; 
-            if (!firebaseConfig || !firebaseConfig.apiKey || (firebaseConfig.apiKey.startsWith("AIzaSy") && firebaseConfig.apiKey.length < 30) ) {
-                 // Simplified check
-            }
+        async function deleteEventProfile(eventId) {
+            if (!db) { console.error("Firestore not initialized."); return false; }
             
-            if (configIsInvalid) {
-                const configErrorMessage = "Application critical error: Firebase configuration is incomplete or uses placeholders. Please ensure all values in the 'firebaseConfig' object are correctly set.";
-                console.error("FATAL: " + configErrorMessage);
-                const errorDiv = document.createElement('div');
-                errorDiv.textContent = configErrorMessage;
-                errorDiv.style.cssText = "position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:20px; text-align:center; z-index:200;";
-                document.body.prepend(errorDiv);
+            showCustomConfirm("Delete Event", `Are you sure you want to delete this event and all its associated data (like demo requests)? This action cannot be undone.`, async (confirmed) => {
+                if (confirmed) {
+                    deleteEventButton.disabled = true;
+                    deleteEventButton.textContent = 'Deleting...';
+                    try {
+                        const batch = writeBatch(db);
+                        const eventRef = doc(db, "artifacts", appId, "public/data/eventProfiles", eventId);
+                        batch.delete(eventRef);
 
-                welcomeScreen.classList.remove('hidden'); 
-                mainAppContent.classList.add('hidden');
-                enterAppButton.onclick = () => { 
-                    localStorage.setItem('attendeeAppWelcomeCompleted', 'true'); 
-                    localStorage.setItem('attendeeAppUserName', userNameInput.value.trim()); 
-                    currentUserNameFromStorage = userNameInput.value.trim();
-                    welcomeScreen.classList.add('hidden');
-                    mainAppContent.classList.remove('hidden');
-                    showError("Firebase is not configured. Attendee data cannot be loaded.", true);
-                };
-                currentUserNameFromStorage = localStorage.getItem('attendeeAppUserName');
-                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) { 
-                    welcomeScreen.classList.add('hidden'); 
-                    mainAppContent.classList.remove('hidden'); 
-                    showError("Firebase is not configured. Attendee data cannot be loaded.", true);
+                        const demoRequestsPath = `artifacts/${appId}/public/data/eventDemoStatus/${eventId}/attendees`;
+                        const demoRequestsCol = collection(db, demoRequestsPath);
+                        const demoRequestsSnapshot = await getDocs(demoRequestsCol);
+                        demoRequestsSnapshot.forEach(docSnap => {
+                            batch.delete(docSnap.ref);
+                        });
+                        
+                        await batch.commit();
+                        console.log("Event profile and associated data deleted:", eventId);
+                        await populateManageEventsDropdown(); 
+                        await populateEventTiles(); 
+                        showNotification("Event deleted successfully.", "success"); 
+                    } catch (error) {
+                        console.error("Error deleting event profile:", error);
+                        showNotification("Failed to delete event. Check console for details.", "error"); 
+                    } finally {
+                        deleteEventButton.disabled = false;
+                        deleteEventButton.textContent = 'Delete Selected Event';
+                    }
                 }
-                return; 
-            }
+            });
+        }
 
+
+        async function populateManageEventsDropdown() {
+            const events = await fetchEventProfiles();
+            manageEventDropdown.innerHTML = '<option value="">-- Select Event --</option>';
+            events.forEach(event => {
+                const option = document.createElement('option');
+                option.value = event.id;
+                option.textContent = event.eventName;
+                manageEventDropdown.appendChild(option);
+            });
+        }
+        
+        async function populateEventTiles() {
+            const events = await fetchEventProfiles();
+            eventTilesContainer.innerHTML = ''; 
+            if (events.length === 0) {
+                noEventsToShowMessage.classList.remove('hidden');
+                return;
+            }
+            noEventsToShowMessage.classList.add('hidden');
+
+            events.forEach(event => {
+                const tile = document.createElement('div');
+                tile.className = 'grid-tile';
+                tile.dataset.eventId = event.id;
+
+                const img = document.createElement('img');
+                img.src = event.eventBannerUrl || 'https://placehold.co/300x100/cccccc/333333?text=No+Banner';
+                img.alt = event.eventName;
+                img.onerror = function() { this.src='https://placehold.co/300x100/cccccc/333333?text=Banner+Error'; };
+                
+                const name = document.createElement('h3');
+                name.className = 'text-lg font-semibold text-gray-800 mt-2';
+                name.textContent = event.eventName;
+
+                const dateText = event.eventDate ? new Date(event.eventDate + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Date TBD';
+                const date = document.createElement('p');
+                date.className = 'text-xs text-gray-500';
+                date.textContent = dateText;
+
+
+                tile.appendChild(img);
+                tile.appendChild(name);
+                tile.appendChild(date);
+                
+                tile.addEventListener('click', () => loadEventSpecificView(event));
+                eventTilesContainer.appendChild(tile);
+            });
+        }
+
+        function loadEventSpecificView(eventData) {
+            currentSelectedEventId = eventData.id;
+            currentSelectedEventData = eventData; 
+            CURRENT_EVENT_GOOGLE_SHEET_URL = eventData.eventSheetUrl;
+            eventSpecificBanner.src = eventData.eventBannerUrl || 'https://placehold.co/800x200/cccccc/333333?text=Event+Banner+Not+Found';
+            eventSpecificTitle.textContent = eventData.eventName;
+            
+            allAttendees = []; 
+            if(pollingTimeoutId) clearTimeout(pollingTimeoutId); 
+            
+            currentFilters = { type: 'All', focusAccount: 'All', onGroundAE: 'All', onGroundSDR: 'All' };
+            currentSearchTerm = '';
+            searchInput.value = '';
+
+
+            showScreen('mainApp');
+            fetchAttendees(); 
+            pollingTimeoutId = setTimeout(fetchAttendees, POLLING_INTERVAL);
+        }
+
+        // --- Gemini API Function ---
+        async function generateIcebreaker(attendee) {
+            icebreakerResult.classList.add('hidden');
+            icebreakerSpinner.classList.remove('hidden');
+            generateIcebreakerButton.disabled = true;
+
+            const fullName = `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim();
+            let prompt = `Generate a short, professional, and friendly icebreaker (1-2 sentences) to start a conversation with ${fullName}.`;
+            if(attendee.jobTitle) prompt += ` They are a ${attendee.jobTitle}`;
+            if(attendee.company) prompt += ` at ${attendee.company}.`;
+            if(attendee.notes) prompt += ` Some notes about them: "${attendee.notes}".`;
+            if(attendee.recentlyMigratedLogos) prompt += ` They recently migrated from these technologies: ${attendee.recentlyMigratedLogos}.`;
+            prompt += ` The conversation is happening at the "${currentSelectedEventData.eventName || 'event'}".`;
+
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // This will be handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    icebreakerResult.textContent = text.replace(/[*_]/g, ''); // Remove markdown
+                    icebreakerResult.classList.remove('hidden');
+                } else {
+                    throw new Error("Invalid response structure from Gemini API.");
+                }
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                icebreakerResult.textContent = "Sorry, couldn't generate an icebreaker at this time.";
+                icebreakerResult.classList.remove('hidden');
+                showNotification("Error generating icebreaker.", "error");
+            } finally {
+                icebreakerSpinner.classList.add('hidden');
+                generateIcebreakerButton.disabled = false;
+            }
+        }
+
+
+        // --- App Initialization ---
+        async function initializeAppLogic() {
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -983,34 +1434,57 @@
                     currentUserId = `local-${crypto.randomUUID()}`;
                 }
                 console.log("Firebase Initialized. User ID for this session:", currentUserId);
-                currentUserNameFromStorage = await getUserNameFromFirestore(); 
+                currentUserNameFromStorage = await getUserNameFromFirestoreOrLocalStorage(); 
             } catch (error) {
                 console.error("Critical Error during Firebase initialization or Auth:", error);
-                const specificErrorAlert = document.createElement('div');
-                specificErrorAlert.textContent = "Could not connect to essential services. Saving your name to the cloud will be unavailable. App will use local storage for welcome screen preference. Error: " + error.message;
-                specificErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:red; color:white; padding:10px; border-radius:5px; z-index:1000;";
-                document.body.appendChild(specificErrorAlert);
-                setTimeout(() => document.body.removeChild(specificErrorAlert), 7000);
-                
+                showNotification("Could not connect to essential services. App functionality will be limited.", "error");
                 db = null; auth = null; currentUserId = `local-${crypto.randomUUID()}`; 
             }
 
-            if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && currentUserNameFromStorage) {
-                welcomeScreen.classList.add('hidden');
-                mainAppContent.classList.remove('hidden');
-                fetchAttendees(); 
-                setInterval(fetchAttendees, POLLING_INTERVAL);
-            } else { 
-                if (localStorage.getItem('attendeeAppWelcomeCompleted') === 'true' && !currentUserNameFromStorage) {
-                    localStorage.removeItem('attendeeAppWelcomeCompleted'); 
-                }
-                welcomeScreen.classList.remove('hidden');
-                mainAppContent.classList.add('hidden');
+            if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+                showScreen('adminControls');
+            } else if (currentUserNameFromStorage) {
+                welcomeBackMessage.textContent = `Welcome back, ${currentUserNameFromStorage}!`;
+                userNamePrompt.classList.add('hidden');
+                returningUserOptions.classList.remove('hidden');
+                showScreen('welcome');
+            } else {
+                userNamePrompt.classList.remove('hidden');
+                returningUserOptions.classList.add('hidden');
+                showScreen('welcome');
             }
             updateEventStatusIndicator(); 
+
+            adminUsernameSelect.innerHTML = ''; 
+            Object.keys(adminUsers).forEach(username => {
+                const option = document.createElement('option');
+                option.value = username;
+                option.textContent = username;
+                adminUsernameSelect.appendChild(option);
+            });
+            
+             if (db) { 
+                const initialEvents = [
+                    { eventName: "#GROWTH Summit Mumbai 2025", city: "Mumbai", eventDate: "2025-05-28", eventStartTime: "09:30", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
+                    { eventName: "#GROWTH Summit Dubai 2025", city: "Dubai", eventDate: "2025-11-12", eventStartTime: "16:00", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
+                    { eventName: "Customer Engagement Summit 2025", city: "New York", eventDate: "2025-09-24", eventStartTime: "09:00", eventEndTime: "19:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=517472722&single=true&output=csv", eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" }
+                ];
+
+                for (const event of initialEvents) {
+                    const eventId = sanitizeForFirestoreId(event.eventName.toLowerCase().replace(/\s+/g, '-')) + '-' + new Date(event.eventDate).getTime(); 
+                    const eventRef = doc(db, "artifacts", appId, "public/data/eventProfiles", eventId);
+                    try {
+                        const docSnap = await getDoc(eventRef);
+                        if (!docSnap.exists()) {
+                            await saveEventProfile({ ...event, id: eventId }); 
+                        }
+                    } catch(e) { console.error("Error checking/saving initial event:", e); }
+                }
+            }
+            await populateEventTiles(); 
         }
                 
-        // Event Listeners
+        // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
             initializeAppLogic();
 
@@ -1018,19 +1492,115 @@
                 const name = userNameInput.value.trim();
                 if (name) {
                     await saveUserName(name); 
-                    localStorage.setItem('attendeeAppWelcomeCompleted', 'true'); 
-                                        
-                    welcomeScreen.classList.add('hidden');
-                    mainAppContent.classList.remove('hidden');
-                    fetchAttendees(); 
-                    setInterval(fetchAttendees, POLLING_INTERVAL);
+                    welcomeBackMessage.textContent = `Welcome back, ${name}!`;
+                    userNamePrompt.classList.add('hidden');
+                    returningUserOptions.classList.remove('hidden');
                 } else {
-                    const nameErrorAlert = document.createElement('div');
-                    nameErrorAlert.textContent = "Please enter your first name.";
-                    nameErrorAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:orange; color:white; padding:10px; border-radius:5px; z-index:1000;";
-                    document.body.appendChild(nameErrorAlert);
-                    setTimeout(() => document.body.removeChild(nameErrorAlert), 3000);
+                    showNotification("Please enter your first name.", "error"); 
                 }
+            });
+
+            viewEventsButton.addEventListener('click', async () => {
+                await populateEventTiles();
+                showScreen('eventSelection');
+            });
+
+            adminControlsLoginButton.addEventListener('click', () => {
+                showScreen('adminLogin');
+            });
+            
+            userLogoutButton.addEventListener('click', () => {
+                localStorage.removeItem('attendeeAppUserName');
+                currentUserNameFromStorage = '';
+                userNameInput.value = ''; 
+                userNamePrompt.classList.remove('hidden');
+                returningUserOptions.classList.add('hidden');
+                showScreen('welcome');
+            });
+
+            backToWelcomeFromAdminLoginButton.addEventListener('click', () => showScreen('welcome'));
+            
+            adminLoginSubmitButton.addEventListener('click', () => {
+                const username = adminUsernameSelect.value;
+                const password = adminPasswordInput.value;
+                if (adminUsers[username] && adminUsers[username] === password) {
+                    adminPasswordInput.value = ''; 
+                    sessionStorage.setItem('adminLoggedIn', 'true');
+                    showScreen('adminControls');
+                } else {
+                    showNotification("Invalid admin username or password.", "error"); 
+                    adminPasswordInput.value = '';
+                }
+            });
+
+            adminLogoutButton.addEventListener('click', () => {
+                sessionStorage.removeItem('adminLoggedIn');
+                showScreen('welcome'); 
+            });
+
+            addEventTile.addEventListener('click', () => {
+                addEventForm.reset();
+                addEventModal.classList.remove('hidden');
+            });
+            closeAddEventModalButton.addEventListener('click', () => addEventModal.classList.add('hidden'));
+            addEventModal.addEventListener('click', (e) => { if(e.target === addEventModal) addEventModal.classList.add('hidden'); });
+
+            submitAddEventButton.addEventListener('click', async () => {
+                const eventData = {
+                    eventName: document.getElementById('eventName').value.trim(),
+                    city: document.getElementById('eventCity').value.trim(),
+                    eventDate: document.getElementById('eventDate').value,
+                    eventStartTime: document.getElementById('eventStartTime').value,
+                    eventEndTime: document.getElementById('eventEndTime').value,
+                    eventSheetUrl: document.getElementById('eventSheetUrl').value.trim(),
+                    eventBannerUrl: document.getElementById('eventBannerUrl').value.trim(),
+                };
+                if (Object.values(eventData).some(val => !val)) {
+                    showNotification("Please fill all event fields.", "error"); 
+                    return;
+                }
+                submitAddEventButton.disabled = true;
+                submitAddEventButton.textContent = 'Submitting...';
+                const success = await saveEventProfile(eventData);
+                if (success) {
+                    showNotification("Event added successfully!", "success"); 
+                    addEventModal.classList.add('hidden');
+                    await populateEventTiles(); 
+                    await populateManageEventsDropdown(); 
+                } else {
+                    showNotification("Failed to add event. Check console.", "error"); 
+                }
+                submitAddEventButton.disabled = false;
+                submitAddEventButton.textContent = 'Submit Event';
+            });
+
+            manageEventsTile.addEventListener('click', async () => {
+                await populateManageEventsDropdown();
+                manageEventsModal.classList.remove('hidden');
+            });
+            closeManageEventsModalButton.addEventListener('click', () => manageEventsModal.classList.add('hidden'));
+            doneManageEventsButton.addEventListener('click', () => manageEventsModal.classList.add('hidden'));
+            manageEventsModal.addEventListener('click', (e) => { if(e.target === manageEventsModal) manageEventsModal.classList.add('hidden'); });
+
+            deleteEventButton.addEventListener('click', async () => {
+                const eventIdToDelete = manageEventDropdown.value;
+                if (!eventIdToDelete) {
+                    showNotification("Please select an event to delete.", "info"); 
+                    return;
+                }
+                await deleteEventProfile(eventIdToDelete);
+            });
+            
+            backToEventSelectionButton.addEventListener('click', async () => {
+                currentSelectedEventId = null;
+                currentSelectedEventData = null;
+                CURRENT_EVENT_GOOGLE_SHEET_URL = '';
+                if(pollingTimeoutId) clearTimeout(pollingTimeoutId);
+                allAttendees = []; 
+                homeScreenTotalAttendeesCount.textContent = '0';
+                eventStatusIndicator.classList.add('hidden');
+                await populateEventTiles();
+                showScreen('eventSelection');
             });
                         
             searchInput.addEventListener('input', (e) => { currentSearchTerm = e.target.value; applyFiltersAndSearch(); });
@@ -1040,6 +1610,12 @@
             demoRequestedButton.addEventListener('click', async () => {
                 if (currentAttendeeForDemo) {
                     await toggleDemoRequest(currentAttendeeForDemo);
+                }
+            });
+            
+            generateIcebreakerButton.addEventListener('click', () => {
+                if(currentAttendeeForDemo) {
+                    generateIcebreaker(currentAttendeeForDemo);
                 }
             });
                         
@@ -1059,11 +1635,7 @@
                 if (demoRequestedAttendees.length > 0) {
                     downloadCSV(demoRequestedAttendees);
                 } else {
-                    const noDemoAlert = document.createElement('div');
-                    noDemoAlert.textContent = "No demo requests to download.";
-                    noDemoAlert.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); background:lightblue; color:black; padding:10px; border-radius:5px; z-index:1000;";
-                    document.body.appendChild(noDemoAlert);
-                    setTimeout(() => document.body.removeChild(noDemoAlert), 3000);
+                    showNotification("No demo requests to download.", "info"); 
                 }
             });
 
@@ -1087,4 +1659,4 @@
         });
     </script>
 </body>
-</ht
+</html>
