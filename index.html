@@ -71,7 +71,6 @@
 
     <!-- Welcome Screen / Initial Login -->
     <div id="welcomeScreen" class="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center p-8">
-        <!-- Scaled down logo -->
         <img src="https://info.moengage.com/hubfs/MoEvents.png" alt="Event Banner" class="max-w-56 md:max-w-xs h-auto mx-auto rounded-lg mb-12" onerror="this.onerror=null; this.src='https://placehold.co/400x150/cccccc/333333?text=Event+Banner';">
         <div id="initialLoginOptions" class="w-full max-w-sm">
             <div id="userNamePrompt">
@@ -1225,7 +1224,7 @@
         // --- Event Management Functions ---
         async function saveEventProfile(eventData) {
             if (!db) { console.error("Firestore not initialized."); return false; }
-            const eventId = sanitizeForFirestoreId(eventData.eventName.toLowerCase().replace(/\s+/g, '-')) + '-' + Date.now(); 
+            const eventId = eventData.id || sanitizeForFirestoreId(eventData.eventName.toLowerCase().replace(/\s+/g, '-')) + '-' + Date.now(); 
             const eventRef = doc(db, "artifacts", appId, "public/data/eventProfiles", eventId);
             try {
                 await setDoc(eventRef, { ...eventData, id: eventId, createdAt: new Date().toISOString() });
