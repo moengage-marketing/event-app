@@ -517,6 +517,7 @@
         const conversationsTableBody = document.getElementById('conversationsTableBody');
         const noConversationsMessage = document.getElementById('noConversationsMessage');
         const downloadConversationsCsvButton = document.getElementById('downloadConversationsCsvButton');
+        const adminLoginSubmitButton = document.getElementById('adminLoginSubmitButton');
         
         // --- Global State ---
         let allAttendees = [];
@@ -860,7 +861,7 @@
                 // If you see a "Failed to fetch" or "CORS" error, the only reliable solution is to use
                 // a dedicated backend like the Google Apps Script method.
                 const sheetUrl = currentSelectedEventData.eventSheetUrl;
-                const urlToFetch = `${sheetUrl.split('&t=')[0]}&t=${new Date().getTime()}`;
+                const urlToFetch = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
 
                 const response = await fetch(urlToFetch);
                 if (!response.ok) {
@@ -1140,6 +1141,23 @@
                 }
             });
 
+            adminLoginSubmitButton.addEventListener('click', () => {
+                const adminUsername = document.getElementById('adminUsername');
+                const adminPassword = document.getElementById('adminPassword');
+                const selectedUsername = adminUsername.value;
+                const enteredPassword = adminPassword.value;
+                const correctPassword = adminUsers[selectedUsername];
+
+                if (enteredPassword && enteredPassword === correctPassword) {
+                    sessionStorage.setItem('adminLoggedIn', 'true');
+                    showScreen('adminControls');
+                    adminPassword.value = '';
+                } else {
+                    showNotification("Invalid password. Please try again.", "error");
+                    adminPassword.value = '';
+                }
+            });
+
             document.getElementById('viewEventsButton').addEventListener('click', () => showScreen('eventSelection'));
             document.getElementById('adminControlsLoginButton').addEventListener('click', () => showScreen('adminLogin'));
             document.getElementById('backToWelcomeFromAdminLoginButton').addEventListener('click', () => showScreen('welcome'));
@@ -1259,7 +1277,7 @@
                         eventDate: "2025-09-24", 
                         eventStartTime: "09:00", 
                         eventEndTime: "19:00", 
-                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", 
+                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=1753655398&single=true&output=csv", 
                         eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" 
                     }
                 ];
