@@ -851,28 +851,39 @@
 
         async function fetchAttendees() {
             if (!currentSelectedEventData || !currentSelectedEventData.eventSheetUrl) {
-                showError(true, "No event selected or data source missing."); return;
+                showError(true, "No event selected or data source missing.");
+                return;
             }
-            showLoading(true); showError(false);
+            showLoading(true);
+            showError(false);
             try {
-                const response = await fetch(currentSelectedEventData.eventSheetUrl + `&t=${new Date().getTime()}`); 
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}.`);
+                let sheetUrl = currentSelectedEventData.eventSheetUrl;
+                const urlWithCacheBuster = `${sheetUrl}&t=${new Date().getTime()}`;
                 
+                let urlToFetch = urlWithCacheBuster;
+
+                // FIX: Dynamically apply CORS proxy to all Google Sheet URLs to ensure they work in live environments
+                if (sheetUrl.startsWith("https://docs.google.com/spreadsheets/")) {
+                    urlToFetch = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
+                }
+
+                const response = await fetch(urlToFetch);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
                 const csvText = await response.text();
                 let parsedAtt = (csvText.trim() === '') ? [] : parseCSV(csvText);
-                
                 allAttendees = parsedAtt.map(att => ({ ...att, demoRequested: false, demoRequestedBy: '' })).filter(att => (att.firstName || att.lastName || att.company || att.jobTitle));
-                
                 populateFilterDropdowns(allAttendees);
                 listenForDemoStatusChanges();
-
             } catch (error) {
-                 console.error('Error fetching attendees:', error);
-                showError(true, `Failed to load attendee data: ${error.message}.`);
+                console.error('Error fetching attendees:', error);
+                showError(true, `Failed to load attendee data: ${error.message}. Please check network and source URL.`);
             } finally {
-                 showLoading(false); 
+                showLoading(false);
             }
         }
+
 
         function listenForDemoStatusChanges() {
             if (demoStatusUnsubscribe) demoStatusUnsubscribe();
@@ -1238,7 +1249,7 @@
                 const initialEvents = [
                     { eventName: "#GROWTH Summit Mumbai 2025", city: "Mumbai", eventDate: "2025-05-28", eventStartTime: "09:30", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
                     { eventName: "#GROWTH Summit Dubai 2025", city: "Dubai", eventDate: "2025-11-12", eventStartTime: "16:00", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
-                    { eventName: "Customer Engagement Summit 2025", city: "New York", eventDate: "2025-09-24", eventStartTime: "09:00", eventEndTime: "19:00", eventSheetUrl: "https://api.allorigins.win/raw?url=https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" }
+                    { eventName: "Customer Engagement Summit 2025", city: "New York", eventDate: "2025-09-24", eventStartTime: "09:00", eventEndTime: "19:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" }
                 ];
 
                 for (const event of initialEvents) {
