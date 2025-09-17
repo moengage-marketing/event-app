@@ -468,7 +468,7 @@
         import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, writeBatch, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Configuration
-        const POLLING_INTERVAL = 30000; 
+        const POLLING_INTERVAL = 30000;
         
         // --- DOM Elements ---
         const screens = { welcome: document.getElementById('welcomeScreen'), adminLogin: document.getElementById('adminLoginScreen'), adminControls: document.getElementById('adminControlsScreen'), eventSelection: document.getElementById('eventSelectionScreen'), mainApp: document.getElementById('mainAppContent')};
@@ -846,22 +846,20 @@
             homeScreenTotalAttendeesCount.textContent = allAttendees.length;
         }
 
-        async function fetchAttendees() {
+        async function fetchAttendees(proxyIndex = 0) {
             if (!currentSelectedEventData || !currentSelectedEventData.eventSheetUrl) {
                 showError(true, "No event selected or data source missing.");
                 return;
             }
-            showLoading(true);
-            showError(false);
-            
+            if (proxyIndex === 0) {
+                showLoading(true);
+                showError(false);
+            }
             try {
-                // WARNING: The proxy logic has been removed as requested.
-                // Due to browser security (CORS), this will likely fail in a live environment.
-                // A website cannot directly fetch data from a different domain (like docs.google.com).
-                // If you see a "Failed to fetch" or "CORS" error, the only reliable solution is to use
-                // a dedicated backend like the Google Apps Script method.
-                const sheetUrl = currentSelectedEventData.eventSheetUrl;
-                const urlToFetch = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
+                let sheetUrl = currentSelectedEventData.eventSheetUrl;
+                const urlWithCacheBuster = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
+                
+                let urlToFetch = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
 
                 const response = await fetch(urlToFetch);
                 if (!response.ok) {
@@ -869,8 +867,8 @@
                 }
                 
                 const csvText = await response.text();
-                if (csvText.trim() === '') {
-                    throw new Error("Received empty data from the backend.");
+                if (csvText.trim() === '' || csvText.toLowerCase().includes('error')) {
+                    throw new Error("Proxy returned empty or error response.");
                 }
                 
                 let parsedAtt = parseCSV(csvText);
@@ -878,11 +876,11 @@
                 
                 populateFilterDropdowns(allAttendees);
                 listenForDemoStatusChanges();
+                showLoading(false);
 
             } catch (error) {
                 console.error(`Fetch attempt failed:`, error);
-                showError(true, `Failed to load attendee data. This is likely due to browser CORS security policy. Please verify the event's Google Sheet URL is correct and published to the web.`);
-            } finally {
+                showError(true, `Failed to load attendee data. Please verify the event's Google Sheet URL is correct and published to the web.`);
                 showLoading(false);
             }
         }
