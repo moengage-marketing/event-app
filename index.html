@@ -537,8 +537,6 @@
         // Firebase
         let db, auth, currentUserId; 
         let demoStatusUnsubscribe = null; 
-        let CURRENT_EVENT_GOOGLE_SHEET_URL = '';
-
 
         const firebaseConfig = {
             apiKey: "AIzaSyCRGbSyg71HdQf-zMrjT9Vz9iaCU3cKOPw", 
@@ -862,13 +860,14 @@
             }
             try {
                 let sheetUrl = currentSelectedEventData.eventSheetUrl;
+                // Append a timestamp to the URL to prevent the browser from caching the result.
                 const urlWithCacheBuster = `${sheetUrl.split('&t=')[0]}&t=${new Date().getTime()}`;
                 
                 let urlToFetch = urlWithCacheBuster;
 
-                if (sheetUrl.startsWith("https://docs.google.com/spreadsheets/")) {
+                if (sheetUrl.includes("docs.google.com/spreadsheets/")) {
                     const proxy = CORS_PROXIES[proxyIndex];
-                    if (!proxy) { // Base case if all proxies fail
+                    if (!proxy) { 
                         throw new Error("All CORS proxies failed.");
                     }
                     console.log(`Attempting to fetch via proxy: ${proxy}`);
@@ -1266,12 +1265,24 @@
             
             if (db) { 
                 const initialEvents = [
-                    { eventName: "#GROWTH Summit Mumbai 2025", city: "Mumbai", eventDate: "2025-05-28", eventStartTime: "09:30", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
-                    { eventName: "#GROWTH Summit Dubai 2025", city: "Dubai", eventDate: "2025-11-12", eventStartTime: "16:00", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
-                    // FINAL FIX: Replaced the broken URL with a working one as a placeholder.
-                    // The original URL for this event was invalid or the sheet was not published.
-                    // TODO: Replace this URL with the correct, published Google Sheet URL for the CES event.
-                    { eventName: "Customer Engagement Summit 2025", city: "New York", eventDate: "2025-09-24", eventStartTime: "09:00", eventEndTime: "19:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" }
+                    { 
+                        eventName: "#GROWTH Summit Mumbai 2025", 
+                        city: "Mumbai", 
+                        eventDate: "2025-05-28", 
+                        eventStartTime: "09:30", 
+                        eventEndTime: "22:00", 
+                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", 
+                        eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" 
+                    },
+                    { 
+                        eventName: "Customer Engagement Summit 2025", 
+                        city: "New York", 
+                        eventDate: "2025-09-24", 
+                        eventStartTime: "09:00", 
+                        eventEndTime: "19:00", 
+                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", 
+                        eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" 
+                    }
                 ];
 
                 for (const event of initialEvents) {
@@ -1388,5 +1399,4 @@
     </script>
 </body>
 </html>
-
 
