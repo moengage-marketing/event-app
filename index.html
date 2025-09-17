@@ -469,6 +469,10 @@
 
         // Configuration
         const POLLING_INTERVAL = 30000; 
+        const CORS_PROXIES = [
+            'https://api.allorigins.win/raw?url=',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
         
         // --- DOM Elements ---
         const screens = { welcome: document.getElementById('welcomeScreen'), adminLogin: document.getElementById('adminLoginScreen'), adminControls: document.getElementById('adminControlsScreen'), eventSelection: document.getElementById('eventSelectionScreen'), mainApp: document.getElementById('mainAppContent')};
@@ -753,12 +757,10 @@
                     const eventRef = doc(db, "artifacts", appId, "public", "data", "eventProfiles", eventId);
                     batch.delete(eventRef);
 
-                    // FIX: Standardized path for demo requests
                     const demoRequestsCol = collection(db, "artifacts", appId, "public", "data", "demoRequests", eventId, "attendees");
                     const demoRequestsSnapshot = await getDocs(demoRequestsCol);
                     demoRequestsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
                     
-                    // FIX: Standardized path for conversation notes
                     const conversationNotesCol = collection(db, "artifacts", appId, "public", "data", "conversationNotes", eventId, "attendees");
                     const conversationNotesSnapshot = await getDocs(conversationNotesCol);
                     conversationNotesSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
@@ -849,38 +851,50 @@
             homeScreenTotalAttendeesCount.textContent = allAttendees.length;
         }
 
-        async function fetchAttendees() {
+        async function fetchAttendees(proxyIndex = 0) {
             if (!currentSelectedEventData || !currentSelectedEventData.eventSheetUrl) {
                 showError(true, "No event selected or data source missing.");
                 return;
             }
-            showLoading(true);
-            showError(false);
+            // Only show loading spinner on the first attempt
+            if (proxyIndex === 0) {
+                showLoading(true);
+                showError(false);
+            }
             try {
                 let sheetUrl = currentSelectedEventData.eventSheetUrl;
                 const urlWithCacheBuster = `${sheetUrl}&t=${new Date().getTime()}`;
-                
                 let urlToFetch = urlWithCacheBuster;
 
-                // FIX: Dynamically apply CORS proxy to all Google Sheet URLs to ensure they work in live environments
                 if (sheetUrl.startsWith("https://docs.google.com/spreadsheets/")) {
-                    urlToFetch = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
+                    const proxy = CORS_PROXIES[proxyIndex];
+                    console.log(`Using proxy: ${proxy}`);
+                    if (proxy.includes('?url=')) {
+                        urlToFetch = `${proxy}${encodeURIComponent(urlWithCacheBuster)}`;
+                    } else {
+                        urlToFetch = `${proxy}${urlWithCacheBuster}`;
+                    }
                 }
-
                 const response = await fetch(urlToFetch);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
                 const csvText = await response.text();
                 let parsedAtt = (csvText.trim() === '') ? [] : parseCSV(csvText);
                 allAttendees = parsedAtt.map(att => ({ ...att, demoRequested: false, demoRequestedBy: '' })).filter(att => (att.firstName || att.lastName || att.company || att.jobTitle));
+                
                 populateFilterDropdowns(allAttendees);
                 listenForDemoStatusChanges();
+                showLoading(false); // Success, so hide spinner
             } catch (error) {
-                console.error('Error fetching attendees:', error);
-                showError(true, `Failed to load attendee data: ${error.message}. Please check network and source URL.`);
-            } finally {
-                showLoading(false);
+                console.error(`Fetch failed with proxy ${CORS_PROXIES[proxyIndex]}:`, error);
+                const nextProxyIndex = proxyIndex + 1;
+                if (nextProxyIndex < CORS_PROXIES.length) {
+                    console.log(`Trying next proxy... (${CORS_PROXIES[nextProxyIndex]})`);
+                    setTimeout(() => fetchAttendees(nextProxyIndex), 250); // Try next proxy after a short delay
+                } else {
+                    showError(true, `Failed to load attendee data after trying all options. Please check network and source URL.`);
+                    showLoading(false);
+                }
             }
         }
 
@@ -889,7 +903,6 @@
             if (demoStatusUnsubscribe) demoStatusUnsubscribe();
             if (!db || !currentSelectedEventId) return;
 
-            // FIX: Standardized collection path for demo requests.
             const demoStatusCol = collection(db, "artifacts", appId, "public", "data", "demoRequests", currentSelectedEventId, "attendees");
             demoStatusUnsubscribe = onSnapshot(demoStatusCol, (snapshot) => {
                 const demoUpdates = new Map(snapshot.docs.map(doc => [doc.id, doc.data()]));
@@ -994,7 +1007,6 @@
                  showNotification("Could not update demo request. Critical info missing.", "error"); return;
             }
             const safeEmailId = sanitizeForFirestoreId(attendee.email);
-            // FIX: Use standardized, nested path for demo requests.
             const demoStatusRef = doc(db, "artifacts", appId, "public", "data", "demoRequests", currentSelectedEventId, "attendees", safeEmailId); 
             const newDemoStatus = !attendee.demoRequested; 
             try {
@@ -1028,7 +1040,6 @@
             if (!db || !currentUserId || !attendee?.email || !currentSelectedEventId) {
                 conversationNoteDisplay.textContent = 'Could not load notes.'; return;
             }
-            // FIX: Use standardized, nested path for conversation notes.
             const noteRef = doc(db, "artifacts", appId, "public", "data", "conversationNotes", currentSelectedEventId, "attendees", sanitizeForFirestoreId(attendee.email));
             try {
                 const docSnap = await getDoc(noteRef);
@@ -1070,7 +1081,6 @@
         async function handleSaveNote() {
             if (!currentAttendeeForModal?.email) return;
             const noteText = conversationNoteInput.value.trim();
-            // FIX: Use standardized, nested path for conversation notes.
             const noteRef = doc(db, "artifacts", appId, "public", "data", "conversationNotes", currentSelectedEventId, "attendees", sanitizeForFirestoreId(currentAttendeeForModal.email));
             try {
                 const noteData = { 
@@ -1092,7 +1102,6 @@
             if (!currentAttendeeForModal?.email) return;
             showCustomConfirm("Delete Note", "Are you sure you want to delete this public note? This action cannot be undone.", async (confirmed) => {
                 if (!confirmed) return;
-                // FIX: Use standardized, nested path for conversation notes.
                 const noteRef = doc(db, "artifacts", appId, "public", "data", "conversationNotes", currentSelectedEventId, "attendees", sanitizeForFirestoreId(currentAttendeeForModal.email));
                 try {
                     await deleteDoc(noteRef);
@@ -1264,10 +1273,8 @@
             await populateEventTiles();
         }
         
-        // FIX: Renamed and corrected the function to fetch all notes from the correct, standardized path.
         async function fetchAllNotesForEvent() {
             if (!db || !currentSelectedEventId) return [];
-            // FIX: Use standardized, nested path for conversation notes.
             const notesCol = collection(db, "artifacts", appId, "public", "data", "conversationNotes", currentSelectedEventId, "attendees");
             try {
                 const snapshot = await getDocs(notesCol);
@@ -1292,10 +1299,8 @@
             }
         }
 
-        // FIX: Added a new function to reliably fetch all demo requests from Firestore for the metrics view.
         async function fetchAllDemoRequestsForEvent() {
             if (!db || !currentSelectedEventId) return [];
-            // FIX: Use standardized, nested path for demo requests.
             const requestsCol = collection(db, "artifacts", appId, "public", "data", "demoRequests", currentSelectedEventId, "attendees");
             try {
                 const snapshot = await getDocs(requestsCol);
