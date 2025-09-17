@@ -855,14 +855,10 @@
             showError(false);
             
             try {
-                // To solve CORS issues in a live environment, we use a reliable proxy.
-                const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const sheetUrl = currentSelectedEventData.eventSheetUrl;
                 
-                // Ensure the URL is correctly formatted for CSV output and add a cache-busting timestamp.
-                const formattedSheetUrl = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
-
-                const urlToFetch = `${proxyUrl}${encodeURIComponent(formattedSheetUrl)}`;
+                // Construct the full URL with the correct sheet name parameter for the Apps Script
+                const urlToFetch = `${sheetUrl.split('?')[0]}?sheet=${currentSelectedEventData.sheetTabName}&t=${new Date().getTime()}`;
 
                 const response = await fetch(urlToFetch);
                 if (!response.ok) {
@@ -870,8 +866,8 @@
                 }
                 
                 const csvText = await response.text();
-                if (csvText.trim() === '' || csvText.toLowerCase().includes('error')) {
-                    throw new Error("Proxy returned empty or error response.");
+                if (csvText.trim() === '' || csvText.toLowerCase().startsWith('error:')) {
+                    throw new Error(csvText);
                 }
                 
                 let parsedAtt = parseCSV(csvText);
@@ -882,7 +878,7 @@
 
             } catch (error) {
                 console.error(`Fetch attempt failed:`, error);
-                showError(true, `Failed to load attendee data. Please verify the event's Google Sheet URL is correct and published to the web.`);
+                showError(true, `Failed to load attendee data. Please ensure the Google Apps Script Web App URL is correct and has been deployed with access for "Anyone".`);
             } finally {
                 showLoading(false);
             }
@@ -1269,7 +1265,8 @@
                         eventDate: "2025-05-28", 
                         eventStartTime: "09:30", 
                         eventEndTime: "22:00", 
-                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", 
+                        eventSheetUrl: "https://script.google.com/macros/s/AKfycbwy0PMAJB5KAQutY4pFxrP7Cpk6eVlTzspAY7n7I4Q1t0Bzy8TwDd8eKF3q-IRG48b0/exec", 
+                        sheetTabName: "Mumbai Summit",
                         eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" 
                     },
                     { 
@@ -1278,7 +1275,8 @@
                         eventDate: "2025-09-24", 
                         eventStartTime: "09:00", 
                         eventEndTime: "19:00", 
-                        eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=1753655398&single=true&output=csv", 
+                        eventSheetUrl: "https://script.google.com/macros/s/AKfycbwy0PMAJB5KAQutY4pFxrP7Cpk6eVlTzspAY7n7I4Q1t0Bzy8TwDd8eKF3q-IRG48b0/exec", 
+                        sheetTabName: "US Summit",
                         eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" 
                     }
                 ];
