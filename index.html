@@ -846,20 +846,23 @@
             homeScreenTotalAttendeesCount.textContent = allAttendees.length;
         }
 
-        async function fetchAttendees(proxyIndex = 0) {
+        async function fetchAttendees() {
             if (!currentSelectedEventData || !currentSelectedEventData.eventSheetUrl) {
                 showError(true, "No event selected or data source missing.");
                 return;
             }
-            if (proxyIndex === 0) {
-                showLoading(true);
-                showError(false);
-            }
+            showLoading(true);
+            showError(false);
+            
             try {
-                let sheetUrl = currentSelectedEventData.eventSheetUrl;
-                const urlWithCacheBuster = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
+                // To solve CORS issues in a live environment, we use a reliable proxy.
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const sheetUrl = currentSelectedEventData.eventSheetUrl;
                 
-                let urlToFetch = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
+                // Ensure the URL is correctly formatted for CSV output and add a cache-busting timestamp.
+                const formattedSheetUrl = `${sheetUrl.replace(/pubhtml/g, 'pub?output=csv').split('&t=')[0]}&t=${new Date().getTime()}`;
+
+                const urlToFetch = `${proxyUrl}${encodeURIComponent(formattedSheetUrl)}`;
 
                 const response = await fetch(urlToFetch);
                 if (!response.ok) {
@@ -876,11 +879,11 @@
                 
                 populateFilterDropdowns(allAttendees);
                 listenForDemoStatusChanges();
-                showLoading(false);
 
             } catch (error) {
                 console.error(`Fetch attempt failed:`, error);
                 showError(true, `Failed to load attendee data. Please verify the event's Google Sheet URL is correct and published to the web.`);
+            } finally {
                 showLoading(false);
             }
         }
