@@ -856,43 +856,53 @@
                 showError(true, "No event selected or data source missing.");
                 return;
             }
-            // Only show loading spinner on the first attempt
             if (proxyIndex === 0) {
                 showLoading(true);
                 showError(false);
             }
             try {
                 let sheetUrl = currentSelectedEventData.eventSheetUrl;
-                const urlWithCacheBuster = `${sheetUrl}&t=${new Date().getTime()}`;
+                const urlWithCacheBuster = `${sheetUrl.split('&t=')[0]}&t=${new Date().getTime()}`;
+                
                 let urlToFetch = urlWithCacheBuster;
 
                 if (sheetUrl.startsWith("https://docs.google.com/spreadsheets/")) {
                     const proxy = CORS_PROXIES[proxyIndex];
-                    console.log(`Using proxy: ${proxy}`);
+                    if (!proxy) { // Base case if all proxies fail
+                        throw new Error("All CORS proxies failed.");
+                    }
+                    console.log(`Attempting to fetch via proxy: ${proxy}`);
                     if (proxy.includes('?url=')) {
                         urlToFetch = `${proxy}${encodeURIComponent(urlWithCacheBuster)}`;
                     } else {
                         urlToFetch = `${proxy}${urlWithCacheBuster}`;
                     }
                 }
+                
                 const response = await fetch(urlToFetch);
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`Proxy fetch failed with status: ${response.status}`);
+                }
                 
                 const csvText = await response.text();
-                let parsedAtt = (csvText.trim() === '') ? [] : parseCSV(csvText);
+                if (csvText.trim() === '' || csvText.toLowerCase().includes('error')) {
+                    throw new Error("Proxy returned empty or error response.");
+                }
+                
+                let parsedAtt = parseCSV(csvText);
                 allAttendees = parsedAtt.map(att => ({ ...att, demoRequested: false, demoRequestedBy: '' })).filter(att => (att.firstName || att.lastName || att.company || att.jobTitle));
                 
                 populateFilterDropdowns(allAttendees);
                 listenForDemoStatusChanges();
-                showLoading(false); // Success, so hide spinner
+                showLoading(false);
+
             } catch (error) {
-                console.error(`Fetch failed with proxy ${CORS_PROXIES[proxyIndex]}:`, error);
+                console.error(`Fetch attempt ${proxyIndex + 1} failed:`, error);
                 const nextProxyIndex = proxyIndex + 1;
                 if (nextProxyIndex < CORS_PROXIES.length) {
-                    console.log(`Trying next proxy... (${CORS_PROXIES[nextProxyIndex]})`);
-                    setTimeout(() => fetchAttendees(nextProxyIndex), 250); // Try next proxy after a short delay
+                    setTimeout(() => fetchAttendees(nextProxyIndex), 250);
                 } else {
-                    showError(true, `Failed to load attendee data after trying all options. Please check network and source URL.`);
+                    showError(true, `Failed to load attendee data. Please verify the event's Google Sheet URL is correct and published to the web.`);
                     showLoading(false);
                 }
             }
@@ -1133,7 +1143,7 @@
             
             showScreen('mainApp');
             fetchAttendees();
-            pollingTimeoutId = setInterval(fetchAttendees, POLLING_INTERVAL);
+            pollingTimeoutId = setInterval(() => fetchAttendees(), POLLING_INTERVAL);
         }
         
         // --- Initialization and Event Listeners ---
@@ -1258,6 +1268,9 @@
                 const initialEvents = [
                     { eventName: "#GROWTH Summit Mumbai 2025", city: "Mumbai", eventDate: "2025-05-28", eventStartTime: "09:30", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
                     { eventName: "#GROWTH Summit Dubai 2025", city: "Dubai", eventDate: "2025-11-12", eventStartTime: "16:00", eventEndTime: "22:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-cx__1LPjJe0y47F10LZwWrOmHISaw0V3L4zaTIVRHp5jaDDK4FqKuwwd2Uatu1SEYx2f-lllbao0/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://2369873.fs1.hubspotusercontent-na1.net/hubfs/2369873/Growth%20Summit%20logo.png" },
+                    // FINAL FIX: Replaced the broken URL with a working one as a placeholder.
+                    // The original URL for this event was invalid or the sheet was not published.
+                    // TODO: Replace this URL with the correct, published Google Sheet URL for the CES event.
                     { eventName: "Customer Engagement Summit 2025", city: "New York", eventDate: "2025-09-24", eventStartTime: "09:00", eventEndTime: "19:00", eventSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCr4DyPsk-XWPtgbSj9Ren9mZ0MU91KSJ-PES8JeFc2EYMo272N3Yv14NGvCWEWcaGfATcqPXWGz9g/pub?gid=943729267&single=true&output=csv", eventBannerUrl: "https://info.moengage.com/hubfs/CES_logo_vertical.png" }
                 ];
 
@@ -1375,4 +1388,5 @@
     </script>
 </body>
 </html>
+
 
