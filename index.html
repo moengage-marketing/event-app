@@ -855,7 +855,6 @@
             showError(false);
             
             try {
-                // Construct the full URL with the correct sheet name parameter for the Apps Script
                 const urlToFetch = `${currentSelectedEventData.eventSheetUrl.split('?')[0]}?sheet=${encodeURIComponent(currentSelectedEventData.sheetTabName)}&t=${new Date().getTime()}`;
 
                 const response = await fetch(urlToFetch);
