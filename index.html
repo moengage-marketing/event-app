@@ -407,7 +407,7 @@
                         <label for="eventSheetUrl" class="block text-sm font-medium text-gray-700">Source Sheet URL
                              <span class="info-icon-container inline-block relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle info-icon" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.196-.12L6.72 9.94l.24-.991.24.991.196.121.287-.47-.45-.082-.082.38.229-.287zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
-                                <span class="tooltip">Paste the URL you receive after File > Share > Publish to Web in your Google Sheet (CSV output).</span>
+                                <span class="tooltip">IMPORTANT: This must be the Web App URL from your deployed Google Apps Script.</span>
                             </span>
                         </label>
                         <input type="url" id="eventSheetUrl" name="eventSheetUrl" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
@@ -855,10 +855,8 @@
             showError(false);
             
             try {
-                const sheetUrl = currentSelectedEventData.eventSheetUrl;
-                
                 // Construct the full URL with the correct sheet name parameter for the Apps Script
-                const urlToFetch = `${sheetUrl.split('?')[0]}?sheet=${currentSelectedEventData.sheetTabName}&t=${new Date().getTime()}`;
+                const urlToFetch = `${currentSelectedEventData.eventSheetUrl.split('?')[0]}?sheet=${encodeURIComponent(currentSelectedEventData.sheetTabName)}&t=${new Date().getTime()}`;
 
                 const response = await fetch(urlToFetch);
                 if (!response.ok) {
@@ -1395,3 +1393,4 @@
     </script>
 </body>
 </html>
+
