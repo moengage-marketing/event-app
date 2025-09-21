@@ -301,10 +301,10 @@
                         </div>
                     </div>
                      <div class="flex flex-col md:flex-row justify-center md:space-x-4 space-y-6 md:space-y-0 side-by-side-charts mt-10">
-                         <div class="md:w-1/2 chart-container"> <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Type</h4>
-                             <canvas id="attendeeTypeChart"></canvas>
-                         </div>
+                          <div class="md:w-1/2 chart-container"> <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Attendees by Type</h4>
+                              <canvas id="attendeeTypeChart"></canvas>
                           </div>
+                           </div>
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <h4 class="text-lg font-semibold text-gray-700 mb-3">Demo Requests</h4>
                         <div id="demoRequestsTableContainer" class="overflow-x-auto">
@@ -588,45 +588,75 @@
         }
         
         function parseCSV(csvText) {
-            const rows = []; let currentRow = []; let currentField = ''; let inQuotes = false;
-            csvText = csvText.trim();
+            // A robust CSV parser to handle quoted fields with commas.
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let inQuotes = false;
+
+            csvText = csvText.trim(); // Trim leading/trailing whitespace
+
             for (let i = 0; i < csvText.length; i++) {
                 const char = csvText[i];
-                if (char === '"') {
-                    if (inQuotes && i + 1 < csvText.length && csvText[i+1] === '"') { currentField += '"'; i++; } else { inQuotes = !inQuotes; }
-                } else if (char === ',' && !inQuotes) { currentRow.push(currentField); currentField = '';
-                } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                    if (csvText[i+1] === '\n' && char === '\r') { i++; }
-                    currentRow.push(currentField); rows.push(currentRow.map(f => f.trim())); currentRow = []; currentField = '';
-                } else { currentField += char; }
-            }
-            currentRow.push(currentField); 
-            if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0].trim() !== '')) { rows.push(currentRow.map(f => f.trim())); }
-            if (rows.length < 2) return []; // Return early if no headers or no data.
 
-            // --- MODIFICATION START ---
-            // This logic handles cases where unquoted commas in the last data column might cause the row to be split into too many fields.
-            const numHeaders = rows[0].length;
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].length > numHeaders) {
-                    const firstPart = rows[i].slice(0, numHeaders - 1);
-                    const lastPartCombined = rows[i].slice(numHeaders - 1).join(',');
-                    rows[i] = [...firstPart, lastPartCombined];
+                if (char === '"') {
+                    // Handle double quotes: could be start/end of a quoted field, or an escaped quote.
+                    if (inQuotes && i + 1 < csvText.length && csvText[i+1] === '"') {
+                        // This is an escaped double quote (""), add a single " to the field.
+                        currentField += '"';
+                        i++; // Skip the next quote.
+                    } else {
+                        // This is the start or end of a quoted field.
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // A comma outside of quotes is a field separator.
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    // A newline outside of quotes is a row separator.
+                    if (csvText[i+1] === '\n' && char === '\r') {
+                        i++; // Handle CRLF by skipping the LF.
+                    }
+                    currentRow.push(currentField);
+                    rows.push(currentRow.map(f => f.trim()));
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    // Any other character is part of the current field.
+                    currentField += char;
                 }
             }
-            // --- MODIFICATION END ---
             
-            const rawHeaders = rows[0]; const data = []; const actualHeaders = rawHeaders.map(h => String(h).trim());
+            // Add the last field and row if they exist.
+            currentRow.push(currentField); 
+            if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0].trim() !== '')) {
+                rows.push(currentRow.map(f => f.trim()));
+            }
+
+            if (rows.length < 2) return []; // Return early if no headers or no data.
+
+            const rawHeaders = rows[0];
+            const data = [];
+            const actualHeaders = rawHeaders.map(h => String(h).trim());
+
             for (let i = 1; i < rows.length; i++) {
-                const values = rows[i]; const entry = {}; let isEmptyRow = true; const numVals = Math.min(values.length, actualHeaders.length);
+                const values = rows[i];
+                const entry = {};
+                let isEmptyRow = true;
+                const numVals = Math.min(values.length, actualHeaders.length);
+
                 for (let j = 0; j < numVals; j++) {
                     const header = actualHeaders[j]; 
                     const mappedKey = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
                     entry[mappedKey] = values[j] || ''; 
                     if (values[j] && String(values[j]).trim() !== '') isEmptyRow = false;
                 }
-                if (!isEmptyRow) { data.push(entry); }
-            } return data;
+                if (!isEmptyRow) {
+                    data.push(entry);
+                }
+            }
+            return data;
         }
 
         function populateFilterDropdowns(attendees) {
